@@ -30,7 +30,20 @@ from sqlalchemy import text
 
 from .models import User, Task, Source, GeneratedClip
 from .database import init_db, close_db, get_db, AsyncSessionLocal
+from .storage.integrations import upload_clips_batch, get_clip_url
 from .api.routes.tasks import router as tasks_router
+from .api.routes.posting_helper import router as posting_router
+from .api.routes.ai_titles import router as ai_titles_router
+from .api.routes.watermarks import router as watermarks_router
+from .api.routes.analytics import router as analytics_router
+from .api.routes.calendar import router as calendar_router
+from .api.routes.quota import router as quota_router
+from .api.routes.billing import router as billing_router
+from .api.routes.experiments import router as experiments_router
+from .api.routes.thumbnails import router as thumbnails_router
+from .webhooks.routes import router as webhooks_router
+from .api.routes.performance import router as performance_router
+from .api.routes.social_media import router as social_media_router
 
 config = Config()
 
@@ -44,9 +57,60 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SupoClip API",
-    description="Python-based backend for SupoClip",
-    version="0.1.0",
-    lifespan=lifespan
+    description="""
+# SupoClip API
+
+An AI-powered video clipping tool that transforms long-form content into viral short clips.
+
+## Features
+
+- **🎬 Video Processing**: Upload videos or provide YouTube URLs for automatic clipping
+- **🤖 AI Analysis**: Intelligent transcript analysis to identify viral segments
+- **🎨 Customization**: Custom fonts, subtitles, and transitions
+- **📊 Analytics**: Track clip performance across platforms
+- **📅 Scheduling**: Calendar integration for content scheduling
+- **💡 AI Titles**: Generate platform-optimized viral titles
+
+## Authentication
+
+All endpoints (except root and health checks) require authentication via the `user_id` header:
+
+```
+user_id: your-user-uuid
+```
+
+## Rate Limiting
+
+- Video processing: 10 requests per hour per user
+- Other endpoints: 100 requests per minute per user
+
+## Support
+
+- Documentation: https://supoclip.com/docs
+- GitHub: https://github.com/yourusername/supoclip
+- Issues: https://github.com/yourusername/supoclip/issues
+    """,
+    version="1.0.0",
+    lifespan=lifespan,
+    contact={
+        "name": "SupoClip Support",
+        "url": "https://supoclip.com",
+        "email": "support@supoclip.com"
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+    },
+    servers=[
+        {
+            "url": "http://localhost:8000",
+            "description": "Local development server"
+        },
+        {
+            "url": "https://api.supoclip.com",
+            "description": "Production server"
+        }
+    ]
 )
 
 app.add_middleware(
@@ -59,19 +123,83 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(tasks_router)
+app.include_router(posting_router)
+app.include_router(ai_titles_router)
+app.include_router(watermarks_router)
+app.include_router(analytics_router)
+app.include_router(calendar_router)
+app.include_router(quota_router)
+app.include_router(billing_router)
+app.include_router(experiments_router)
+app.include_router(thumbnails_router)
+app.include_router(webhooks_router)
+app.include_router(performance_router)
+app.include_router(social_media_router)
 
 # Mount static files for serving clips
 clips_dir = Path(config.temp_dir) / "clips"
 clips_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/clips", StaticFiles(directory=str(clips_dir)), name="clips")
 
-@app.get("/")
+# Mount static files for serving thumbnails
+thumbnails_dir = Path(config.temp_dir) / "thumbnails"
+thumbnails_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/thumbnails", StaticFiles(directory=str(thumbnails_dir)), name="thumbnails")
+
+@app.get(
+    "/",
+    summary="API Root",
+    description="Get basic API information and links to documentation",
+    tags=["Core"],
+    responses={
+        200: {
+            "description": "Successful response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "This is the SupoClip FastAPI-based API. Visit /docs for the API documentation.",
+                        "version": "1.0.0",
+                        "docs": "/docs",
+                        "health": "/health/db"
+                    }
+                }
+            }
+        }
+    }
+)
 def read_root():
     return {
-        "message": "This is the SupoClip FastAPI-based API. Visit /docs for the API documentation."
+        "message": "This is the SupoClip FastAPI-based API. Visit /docs for the API documentation.",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health/db"
     }
 
-@app.get("/health/db")
+@app.get(
+    "/health/db",
+    summary="Database Health Check",
+    description="Check if the database is accessible and responding",
+    tags=["Core"],
+    responses={
+        200: {
+            "description": "Database health status",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "healthy": {
+                            "summary": "Healthy database",
+                            "value": {"status": "healthy", "database": "connected"}
+                        },
+                        "unhealthy": {
+                            "summary": "Unhealthy database",
+                            "value": {"status": "unhealthy", "database": "disconnected", "error": "Connection timeout"}
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def check_database_health(db: AsyncSession = Depends(get_db)):
     """Check database connectivity"""
     try:
@@ -80,7 +208,93 @@ async def check_database_health(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
 
-@app.post("/start")
+@app.post(
+    "/start",
+    summary="Process Video (Synchronous)",
+    description="""
+Process a video and generate clips immediately (synchronous operation).
+
+This endpoint:
+1. Downloads the video (if YouTube URL) or uses uploaded file
+2. Generates transcript using AssemblyAI
+3. Analyzes transcript with AI to identify viral segments
+4. Creates 9:16 vertical clips with subtitles and transitions
+5. Returns all results immediately
+
+**Note**: For long videos (>10 minutes), use `/start-with-progress` instead for better UX.
+
+**Authentication**: Required via `user_id` header
+    """,
+    tags=["Video Processing"],
+    responses={
+        200: {
+            "description": "Video processed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "Task started successfully",
+                        "task_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "relevant_segments": [
+                            {
+                                "start_time": 10.5,
+                                "end_time": 25.3,
+                                "text": "In this moment I reveal the secret to...",
+                                "relevance_score": 95,
+                                "reasoning": "Strong hook with valuable insight"
+                            }
+                        ],
+                        "clips": [
+                            {
+                                "filename": "clip_1_10.5_25.3.mp4",
+                                "path": "/tmp/clips/clip_1_10.5_25.3.mp4",
+                                "start_time": 10.5,
+                                "end_time": 25.3,
+                                "duration": 14.8,
+                                "text": "In this moment I reveal...",
+                                "relevance_score": 95,
+                                "reasoning": "Strong hook with valuable insight"
+                            }
+                        ],
+                        "summary": "Video discusses productivity tips and life hacks",
+                        "key_topics": ["productivity", "time management", "habits"]
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Bad request - missing or invalid parameters",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Source URL is required"}
+                }
+            }
+        },
+        401: {
+            "description": "Unauthorized - missing or invalid user_id",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "User authentication required"}
+                }
+            }
+        },
+        404: {
+            "description": "User not found",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "User not found"}
+                }
+            }
+        },
+        500: {
+            "description": "Server error during processing",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Failed to download video"}
+                }
+            }
+        }
+    }
+)
 async def start_task(request: Request):
   """Start a new task for authenticated users"""
   logger.info("🚀 Starting new task request")
@@ -216,16 +430,23 @@ async def start_task(request: Request):
             clips_info = create_clips_with_transitions(video_path, relevant_segments_json, clips_output_dir, font_family, font_size, font_color)
             logger.info(f"✅ Generated {len(clips_info)} video clips with transitions")
 
+            # Upload clips to CDN (if enabled)
+            logger.info("☁️ Uploading clips to CDN (if configured)")
+            cdn_urls = await upload_clips_batch(clips_info, task.id)
+            logger.info(f"✅ CDN upload complete - {sum(1 for u in cdn_urls.values() if u)} clips uploaded")
+
             # Save clips to database
             logger.info("💾 Saving clips to database")
             async with AsyncSessionLocal() as db:
                 clip_ids = []
                 for i, clip_info in enumerate(clips_info):
                     logger.info(f"💾 Saving clip {i+1}/{len(clips_info)}: {clip_info['filename']}")
+                    cdn_url = cdn_urls.get(clip_info["filename"])
                     clip_record = GeneratedClip(
                         task_id=task.id,
                         filename=clip_info["filename"],
                         file_path=clip_info["path"],
+                        cdn_url=cdn_url,
                         start_time=clip_info["start_time"],
                         end_time=clip_info["end_time"],
                         duration=clip_info["duration"],
@@ -407,14 +628,21 @@ async def process_video_task(task_id: str, raw_source: dict, user_id: str, font_
             clips_info = create_clips_with_transitions(video_path, relevant_segments_json, clips_output_dir, font_family, font_size, font_color)
             logger.info(f"✅ Generated {len(clips_info)} video clips with transitions")
 
+            # Upload clips to CDN (if enabled)
+            logger.info(f"☁️ Task {task_id}: Uploading clips to CDN (if configured)")
+            cdn_urls = await upload_clips_batch(clips_info, task_id)
+            logger.info(f"✅ Task {task_id}: CDN upload complete - {sum(1 for u in cdn_urls.values() if u)} clips uploaded")
+
             logger.info(f"📊 Task {task_id}: Saving clips to database...")
             async with AsyncSessionLocal() as db:
                 clip_ids = []
                 for i, clip_info in enumerate(clips_info):
+                    cdn_url = cdn_urls.get(clip_info["filename"])
                     clip_record = GeneratedClip(
                         task_id=task_id,
                         filename=clip_info["filename"],
                         file_path=clip_info["path"],
+                        cdn_url=cdn_url,
                         start_time=clip_info["start_time"],
                         end_time=clip_info["end_time"],
                         duration=clip_info["duration"],
@@ -459,7 +687,7 @@ async def get_task_clips(task_id: str, db: AsyncSession = Depends(get_db)):
     # Get clips for this task
     clips_result = await db.execute(
       text("""
-        SELECT id, filename, file_path, start_time, end_time, duration,
+        SELECT id, filename, file_path, cdn_url, start_time, end_time, duration,
                text, relevance_score, reasoning, clip_order, created_at
         FROM generated_clips
         WHERE task_id = :task_id
@@ -469,13 +697,21 @@ async def get_task_clips(task_id: str, db: AsyncSession = Depends(get_db)):
     )
     clips = clips_result.fetchall()
 
-    # Convert to list of dictionaries and add serving URLs
+    # Convert to list of dictionaries and add serving URLs with CDN fallback
     clips_data = []
     for clip in clips:
+      # Get best available URL (CDN with fallback to direct serving)
+      video_url = get_clip_url(
+        filename=clip.filename,
+        cdn_url=clip.cdn_url if hasattr(clip, 'cdn_url') else None,
+        task_id=task_id
+      )
+
       clip_data = {
         "id": clip.id,
         "filename": clip.filename,
         "file_path": clip.file_path,
+        "cdn_url": clip.cdn_url if hasattr(clip, 'cdn_url') else None,
         "start_time": clip.start_time,
         "end_time": clip.end_time,
         "duration": clip.duration,
@@ -484,7 +720,7 @@ async def get_task_clips(task_id: str, db: AsyncSession = Depends(get_db)):
         "reasoning": clip.reasoning,
         "clip_order": clip.clip_order,
         "created_at": clip.created_at.isoformat(),
-        "video_url": f"/clips/{clip.filename}"  # URL for frontend to access the clip
+        "video_url": video_url  # Best URL (CDN or fallback)
       }
       clips_data.append(clip_data)
 
@@ -543,7 +779,40 @@ async def get_task_details(task_id: str, db: AsyncSession = Depends(get_db)):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error retrieving task: {str(e)}")
 
-@app.get("/fonts")
+@app.get(
+    "/fonts",
+    summary="List Available Fonts",
+    description="""
+Get list of all available font families for subtitle customization.
+
+Fonts are .ttf files stored in the backend/fonts/ directory.
+Use the `name` field in the `font_options.font_family` parameter when processing videos.
+    """,
+    tags=["Resources"],
+    responses={
+        200: {
+            "description": "List of available fonts",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "fonts": [
+                            {
+                                "name": "TikTokSans-Regular",
+                                "display_name": "TikTok Sans Regular",
+                                "file_path": "/app/fonts/TikTokSans-Regular.ttf"
+                            },
+                            {
+                                "name": "Arial-Bold",
+                                "display_name": "Arial Bold",
+                                "file_path": "/app/fonts/Arial-Bold.ttf"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+)
 async def get_available_fonts():
     """Get list of available fonts"""
     try:
@@ -591,7 +860,40 @@ async def get_font_file(font_name: str):
         logger.error(f"Error serving font {font_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error serving font: {str(e)}")
 
-@app.get("/transitions")
+@app.get(
+    "/transitions",
+    summary="List Available Transitions",
+    description="""
+Get list of all available transition effects for clips.
+
+Transitions are .mp4 files that are automatically applied between clips
+when using the `create_clips_with_transitions()` function.
+    """,
+    tags=["Resources"],
+    responses={
+        200: {
+            "description": "List of available transitions",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "transitions": [
+                            {
+                                "name": "swipe_left",
+                                "display_name": "Swipe Left",
+                                "file_path": "/app/transitions/swipe_left.mp4"
+                            },
+                            {
+                                "name": "fade_black",
+                                "display_name": "Fade Black",
+                                "file_path": "/app/transitions/fade_black.mp4"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+)
 async def get_available_transitions():
     """Get list of available transition effects"""
     try:
@@ -615,7 +917,49 @@ async def get_available_transitions():
         raise HTTPException(status_code=500, detail=f"Error retrieving transitions: {str(e)}")
 
 # endpoint to upload a video
-@app.post("/upload")
+@app.post(
+    "/upload",
+    summary="Upload Video File",
+    description="""
+Upload a video file to the server for processing.
+
+After upload, use the returned `video_path` as the `source.url` parameter
+in the `/start` or `/start-with-progress` endpoints.
+
+**Supported formats**: MP4, MOV, AVI, MKV
+**Max file size**: 500 MB
+    """,
+    tags=["Video Processing"],
+    responses={
+        200: {
+            "description": "Video uploaded successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "Video uploaded successfully",
+                        "video_path": "/tmp/uploads/550e8400-e29b-41d4-a716-446655440000.mp4"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Bad request - no file provided",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "No video file provided"}
+                }
+            }
+        },
+        500: {
+            "description": "Server error during upload",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Error uploading video: Disk full"}
+                }
+            }
+        }
+    }
+)
 async def upload_video(request: Request):
     """Upload a video to the server"""
     try:

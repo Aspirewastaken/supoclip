@@ -5,6 +5,8 @@ Music swapper system with intelligent selection.
 """
 import logging
 import random
+import os
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import json
@@ -25,17 +27,54 @@ class Song:
     color: str  # For UI color coding
 
 
-# HARDCODED MUSIC LIBRARY - 40 songs
-# TO UPDATE: Modify this list in Claude Code
-MUSIC_LIBRARY = [
-    Song(1, "upbeat_energy_01.mp3", "/app/music/upbeat_energy_01.mp3", "Energetic and motivating", "Action sequences, training montages", "high", 140, "#FF6B6B"),
-    Song(2, "chill_vibes_01.mp3", "/app/music/chill_vibes_01.mp3", "Relaxed and smooth", "Talking moments, explanations", "low", 85, "#4ECDC4"),
-    Song(3, "epic_cinematic_01.mp3", "/app/music/epic_cinematic_01.mp3", "Dramatic and powerful", "Achievements, big moments", "high", 120, "#FFD93D"),
-    Song(4, "lo_fi_beats_01.mp3", "/app/music/lo_fi_beats_01.mp3", "Chill study vibes", "Background for stories", "low", 75, "#95E1D3"),
-    Song(5, "trap_banger_01.mp3", "/app/music/trap_banger_01.mp3", "Hard hitting trap", "Hype moments", "high", 150, "#F38181"),
-    # ... 35 more songs to be added by user
-    Song(40, "ambient_pad_05.mp3", "/app/music/ambient_pad_05.mp3", "Atmospheric and moody", "Emotional moments", "low", 60, "#AA96DA"),
-]
+def load_music_library(json_path: str = None) -> List[Song]:
+    """
+    Load music library from JSON file.
+
+    Args:
+        json_path: Path to songs.json file. If None, uses default location.
+
+    Returns:
+        List of Song objects
+    """
+    if json_path is None:
+        # Default to backend/music/songs.json
+        current_file = Path(__file__)
+        backend_dir = current_file.parent.parent.parent  # Go up to backend/
+        json_path = backend_dir / "music" / "songs.json"
+
+    try:
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+
+        songs = []
+        for song_data in data.get("songs", []):
+            song = Song(
+                id=song_data["id"],
+                filename=song_data["filename"],
+                path=song_data["path"],
+                vibe=song_data["vibe"],
+                context=song_data["context"],
+                energy=song_data["energy"],
+                bpm=song_data["bpm"],
+                color=song_data["color"]
+            )
+            songs.append(song)
+
+        logger.info(f"Loaded {len(songs)} songs from {json_path}")
+        return songs
+
+    except FileNotFoundError:
+        logger.error(f"Music library JSON not found: {json_path}")
+        logger.warning("Using empty music library. Add songs to backend/music/songs.json")
+        return []
+    except Exception as e:
+        logger.error(f"Error loading music library: {e}")
+        return []
+
+
+# Load music library from JSON
+MUSIC_LIBRARY = load_music_library()
 
 
 class MusicSwapper:

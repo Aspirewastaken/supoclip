@@ -30,6 +30,13 @@ model User {
   last_name     String?   @db.VarChar(100)
   password_hash String?   @db.VarChar(255)
 
+  // Role and billing fields
+  role                              String    @default("free") @db.VarChar(20)
+  stripe_customer_id                String?   @db.VarChar(255)
+  stripe_subscription_id            String?   @db.VarChar(255)
+  subscription_status               String    @default("inactive") @db.VarChar(20)
+  subscription_current_period_end   DateTime? @db.Timestamptz
+
   // Default font preferences
   default_font_family String?   @default("TikTokSans-Regular") @db.VarChar(100)
   default_font_size   Int?      @default(24)
@@ -39,6 +46,7 @@ model User {
   tasks         Task[]
   sessions      Session[]
   accounts      Account[]
+  usageTracking UsageTracking[]
 
   @@map("users")
 }
@@ -126,4 +134,22 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+model UsageTracking {
+  id              String   @id @default(uuid())
+  user_id         String
+  month           Int
+  year            Int
+  clips_generated Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  // Relationships
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, month, year])
+  @@index([user_id])
+  @@index([month, year])
+  @@map("usage_tracking")
 }

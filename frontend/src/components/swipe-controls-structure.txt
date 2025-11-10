@@ -1,0 +1,256 @@
+SwipeControls Component Structure
+=================================
+
+Visual Layout:
+┌─────────────────────────────────────────────────────────┐
+│                    [2 / 5]                  ❤️  ✕      │  ← Top Bar
+│                                                         │
+│  ◀                                              ▶      │  ← Arrow Buttons
+│     ┌───────────────────────────────────┐              │
+│     │                                   │              │
+│     │         VIDEO PLAYER              │              │
+│     │         (renderContent)           │              │  ← Content Area
+│     │                                   │              │
+│     │                                   │              │
+│     └───────────────────────────────────┘              │
+│                                                         │
+│              ● ━ ● ● ●                                 │  ← Progress Dots
+│         Swipe or use arrow keys                        │  ← Swipe Hint
+└─────────────────────────────────────────────────────────┘
+
+Features Map:
+=============
+
+1. COUNTER DISPLAY (Top Center)
+   - Shows current position: "X / Total"
+   - Fixed positioning with backdrop blur
+   - Visible at all times
+
+2. QUICK ACTIONS (Top Right)
+   - Heart button (Favorite)
+   - X button (Reject)
+   - Only shown if handlers provided
+   - Floating with shadow
+
+3. NAVIGATION ARROWS (Left/Right)
+   - Large circular buttons
+   - Left arrow: Previous clip
+   - Right arrow: Next clip
+   - Auto-hide at boundaries
+   - Keyboard shortcut indicators
+
+4. CONTENT AREA (Center)
+   - Swipeable container
+   - Drag detection (touch + mouse)
+   - Animation wrapper
+   - Custom content via renderContent()
+
+5. PROGRESS DOTS (Bottom Center)
+   - One dot per clip
+   - Active dot expands
+   - Click to jump to clip
+   - Visual feedback
+
+6. SWIPE HINT (Bottom)
+   - Shows on first load
+   - Fades after 2 seconds
+   - Only with multiple clips
+
+Interaction Methods:
+====================
+
+1. KEYBOARD
+   ┌────────────┬─────────────────────┐
+   │ Key        │ Action              │
+   ├────────────┼─────────────────────┤
+   │ ←          │ Previous clip       │
+   │ →          │ Next clip           │
+   │ F          │ Favorite (if set)   │
+   │ Delete     │ Reject (if set)     │
+   └────────────┴─────────────────────┘
+
+2. GESTURES
+   ┌────────────┬─────────────────────┐
+   │ Gesture    │ Action              │
+   ├────────────┼─────────────────────┤
+   │ Swipe ←    │ Next clip           │
+   │ Swipe →    │ Previous clip       │
+   │ Drag ←     │ Next clip           │
+   │ Drag →     │ Previous clip       │
+   └────────────┴─────────────────────┘
+
+3. CLICKS
+   - Click left arrow: Previous
+   - Click right arrow: Next
+   - Click heart: Favorite
+   - Click X: Reject
+   - Click dot: Jump to clip
+
+Animation Flow:
+===============
+
+Navigation Left (Next):
+  Current Clip          New Clip
+  [VISIBLE]            [OFF RIGHT]
+       ↓                    ↓
+  [SLIDE LEFT]        [SLIDE IN FROM RIGHT]
+       ↓                    ↓
+  [OFF LEFT]          [VISIBLE]
+
+Navigation Right (Previous):
+  Current Clip          New Clip
+  [VISIBLE]            [OFF LEFT]
+       ↓                    ↓
+  [SLIDE RIGHT]       [SLIDE IN FROM LEFT]
+       ↓                    ↓
+  [OFF RIGHT]         [VISIBLE]
+
+Animation Properties:
+- Type: Spring physics
+- Stiffness: 300
+- Damping: 30
+- Opacity fade: 0.3s
+- Swipe threshold: 50px
+
+State Management:
+=================
+
+Component State:
+┌────────────────┬──────────┬─────────────────┐
+│ State          │ Type     │ Purpose         │
+├────────────────┼──────────┼─────────────────┤
+│ swipeDirection │ string   │ Track direction │
+│ isDragging     │ boolean  │ Drag status     │
+└────────────────┴──────────┴─────────────────┘
+
+Parent State (Required):
+┌────────────────┬──────────┬─────────────────┐
+│ State          │ Type     │ Purpose         │
+├────────────────┼──────────┼─────────────────┤
+│ currentIndex   │ number   │ Current clip    │
+│ clips          │ array    │ Clip data       │
+└────────────────┴──────────┴─────────────────┘
+
+Parent State (Optional):
+┌────────────────┬──────────┬─────────────────┐
+│ State          │ Type     │ Purpose         │
+├────────────────┼──────────┼─────────────────┤
+│ favorites      │ Set      │ Favorited clips │
+│ rejected       │ Set      │ Rejected clips  │
+└────────────────┴──────────┴─────────────────┘
+
+Props Interface:
+================
+
+export interface SwipeControlsProps {
+  // Required
+  clips: Clip[];
+  currentIndex: number;
+  onNavigate: (newIndex: number) => void;
+  renderContent: (clip: Clip, index: number) => ReactNode;
+
+  // Optional
+  onFavorite?: (clip: Clip) => void;
+  onReject?: (clip: Clip) => void;
+  className?: string;
+  showQuickActions?: boolean;
+  swipeThreshold?: number;
+  animationDuration?: number;
+}
+
+export interface Clip {
+  id: string;
+  url: string;
+  [key: string]: any;
+}
+
+Component Tree:
+===============
+
+SwipeControls
+├── div.container
+│   ├── div.counter
+│   │   └── span (X / Total)
+│   ├── div.quick-actions (conditional)
+│   │   ├── Button (favorite)
+│   │   └── Button (reject)
+│   ├── div.content
+│   │   └── AnimatePresence
+│   │       └── motion.div
+│   │           └── {renderContent()}
+│   ├── div.navigation
+│   │   ├── Button (left arrow)
+│   │   └── Button (right arrow)
+│   ├── div.progress-dots
+│   │   └── button[] (one per clip)
+│   └── motion.div.swipe-hint (conditional)
+│       └── span + icons
+
+Event Handlers:
+===============
+
+Keyboard Events:
+- window.addEventListener("keydown", handleKeyDown)
+- Prevents default on arrow keys
+- Ignores when focused on inputs
+
+Drag Events:
+- onDragStart: Set dragging state
+- onDragEnd: Check threshold & navigate
+- dragConstraints: Limit drag range
+- dragElastic: 0.2 (bounce effect)
+
+Click Events:
+- onClick: Arrow buttons
+- onClick: Quick action buttons
+- onClick: Progress dots
+
+Lifecycle:
+- useEffect: Setup keyboard listener
+- useEffect cleanup: Remove listener
+- useCallback: Memoized handlers
+
+Dependencies:
+=============
+
+npm packages:
+├── framer-motion (animations)
+├── lucide-react (icons)
+├── @radix-ui/react-slot (Button component)
+├── class-variance-authority (Button variants)
+├── clsx (className utility)
+└── tailwind-merge (className utility)
+
+Local imports:
+├── @/components/ui/button
+└── @/lib/utils
+
+Files Created:
+==============
+
+1. /frontend/src/components/swipe-controls.tsx
+   - Main component (342 lines)
+   - Full feature implementation
+
+2. /frontend/src/components/swipe-controls-example.tsx
+   - Complete usage example (200+ lines)
+   - State management demo
+   - Integration patterns
+
+3. /frontend/src/app/clip-review-demo/page.tsx
+   - Full demo page (300+ lines)
+   - Interactive testing interface
+
+4. /frontend/src/components/SWIPE_CONTROLS_README.md
+   - Comprehensive documentation
+   - API reference
+   - Troubleshooting guide
+
+5. /SWIPE_CONTROLS_INTEGRATION_GUIDE.md
+   - Integration instructions
+   - Quick start guide
+   - Backend API examples
+
+6. /frontend/src/components/swipe-controls-structure.txt
+   - This file
+   - Visual structure guide

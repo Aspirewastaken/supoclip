@@ -1,0 +1,259 @@
+# SupoClip Alerting Rules
+
+groups:
+  - name: supoclip_backend_alerts
+    interval: 30s
+    rules:
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(supoclip_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(supoclip_http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          dashboard: "http://grafana:3000/d/supoclip-overview"
+
+      # High Request Latency
+      - alert: HighRequestLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(supoclip_http_request_duration_seconds_bucket[5m])) by (le, endpoint)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High request latency on {{ $labels.endpoint }}"
+          description: "95th percentile latency is {{ $value }}s (threshold: 5s)"
+
+      # Backend Down
+      - alert: BackendDown
+        expr: up{job="supoclip-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "SupoClip backend is down"
+          description: "Backend service has been down for more than 1 minute"
+
+  - name: supoclip_worker_alerts
+    interval: 30s
+    rules:
+      # Worker Queue Backup
+      - alert: WorkerQueueBackup
+        expr: supoclip_worker_queue_depth > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Worker queue backup detected"
+          description: "Queue {{ $labels.queue_name }} has {{ $value }} pending tasks for >10 minutes"
+
+      # Worker Failed
+      - alert: WorkerFailed
+        expr: up{job="supoclip-worker"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "SupoClip worker is down"
+          description: "Worker service has been down for more than 2 minutes"
+
+      # High Worker Task Failure Rate
+      - alert: HighWorkerTaskFailureRate
+        expr: |
+          (
+            sum(rate(supoclip_worker_queue_tasks_processed_total{status="failed"}[5m]))
+            /
+            sum(rate(supoclip_worker_queue_tasks_processed_total[5m]))
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "High worker task failure rate"
+          description: "Worker task failure rate is {{ $value | humanizePercentage }} (threshold: 20%)"
+
+  - name: supoclip_video_processing_alerts
+    interval: 30s
+    rules:
+      # Slow Video Processing
+      - alert: SlowVideoProcessing
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(supoclip_video_processing_duration_seconds_bucket{stage="clip_generation"}[10m])) by (le)
+          ) > 600
+        for: 10m
+        labels:
+          severity: warning
+          component: video-processing
+        annotations:
+          summary: "Slow video processing detected"
+          description: "95th percentile clip generation time is {{ $value }}s (threshold: 600s)"
+
+      # High Video Processing Failure Rate
+      - alert: HighVideoProcessingFailureRate
+        expr: |
+          (
+            sum(rate(supoclip_video_processing_total{status="failed"}[10m]))
+            /
+            sum(rate(supoclip_video_processing_total[10m]))
+          ) > 0.15
+        for: 10m
+        labels:
+          severity: warning
+          component: video-processing
+        annotations:
+          summary: "High video processing failure rate"
+          description: "Video processing failure rate is {{ $value | humanizePercentage }} (threshold: 15%)"
+
+      # Too Many Concurrent Video Processing
+      - alert: TooManyConcurrentVideoProcessing
+        expr: supoclip_video_processing_in_progress > 5
+        for: 15m
+        labels:
+          severity: warning
+          component: video-processing
+        annotations:
+          summary: "Too many concurrent video processing tasks"
+          description: "{{ $value }} video processing tasks running concurrently (threshold: 5)"
+
+  - name: supoclip_resource_alerts
+    interval: 30s
+    rules:
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: supoclip_memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% (threshold: 85%)"
+
+      # Critical Memory Usage
+      - alert: CriticalMemoryUsage
+        expr: supoclip_memory_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical memory usage"
+          description: "Memory usage is {{ $value }}% (threshold: 95%)"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: supoclip_cpu_usage_percent > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% (threshold: 80%)"
+
+      # Low Disk Space
+      - alert: LowDiskSpace
+        expr: supoclip_disk_free_bytes < 5 * 1024 * 1024 * 1024  # 5GB
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space on {{ $labels.path }}"
+          description: "Free disk space is {{ $value | humanize }}B (threshold: 5GB)"
+
+      # Critical Disk Space
+      - alert: CriticalDiskSpace
+        expr: supoclip_disk_free_bytes < 1 * 1024 * 1024 * 1024  # 1GB
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical disk space on {{ $labels.path }}"
+          description: "Free disk space is {{ $value | humanize }}B (threshold: 1GB)"
+
+      # High Disk Usage Percentage
+      - alert: HighDiskUsagePercentage
+        expr: supoclip_disk_usage_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High disk usage on {{ $labels.path }}"
+          description: "Disk usage is {{ $value }}% (threshold: 90%)"
+
+  - name: supoclip_database_alerts
+    interval: 30s
+    rules:
+      # Database Down
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Database has been unreachable for more than 1 minute"
+
+      # Slow Database Queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(supoclip_db_query_duration_seconds_bucket[5m])) by (le, query_type)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile query time for {{ $labels.query_type }} is {{ $value }}s (threshold: 1s)"
+
+      # High Database Connection Usage
+      - alert: HighDatabaseConnectionUsage
+        expr: |
+          (
+            supoclip_db_connections_active
+            /
+            (supoclip_db_connections_active + supoclip_db_connections_idle)
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection pool is {{ $value | humanizePercentage }} utilized (threshold: 80%)"
+
+  - name: supoclip_redis_alerts
+    interval: 30s
+    rules:
+      # Redis Down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis has been unreachable for more than 2 minutes"

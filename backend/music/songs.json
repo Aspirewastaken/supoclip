@@ -1,0 +1,406 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-11-10",
+  "songs": [
+    {
+      "id": 1,
+      "filename": "energetic_01.mp3",
+      "path": "/app/music/energetic_01.mp3",
+      "vibe": "Energetic and motivating",
+      "context": "Action sequences, workout content, high-energy moments",
+      "energy": "high",
+      "bpm": 140,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 2,
+      "filename": "energetic_02.mp3",
+      "path": "/app/music/energetic_02.mp3",
+      "vibe": "Upbeat and exciting",
+      "context": "Fast-paced content, sports highlights, celebrations",
+      "energy": "high",
+      "bpm": 145,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 3,
+      "filename": "energetic_03.mp3",
+      "path": "/app/music/energetic_03.mp3",
+      "vibe": "Powerful and intense",
+      "context": "Training montages, competitive moments, challenges",
+      "energy": "high",
+      "bpm": 150,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 4,
+      "filename": "energetic_04.mp3",
+      "path": "/app/music/energetic_04.mp3",
+      "vibe": "Dynamic and punchy",
+      "context": "Quick transitions, rapid-fire content, hype moments",
+      "energy": "high",
+      "bpm": 138,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 5,
+      "filename": "energetic_05.mp3",
+      "path": "/app/music/energetic_05.mp3",
+      "vibe": "Bold and confident",
+      "context": "Success stories, victories, motivational content",
+      "energy": "high",
+      "bpm": 142,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 6,
+      "filename": "energetic_06.mp3",
+      "path": "/app/music/energetic_06.mp3",
+      "vibe": "Fast and furious",
+      "context": "Time-sensitive content, countdowns, urgent moments",
+      "energy": "high",
+      "bpm": 155,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 7,
+      "filename": "energetic_07.mp3",
+      "path": "/app/music/energetic_07.mp3",
+      "vibe": "Electric and vibrant",
+      "context": "Party content, celebrations, exciting reveals",
+      "energy": "high",
+      "bpm": 148,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 8,
+      "filename": "energetic_08.mp3",
+      "path": "/app/music/energetic_08.mp3",
+      "vibe": "Aggressive and hard-hitting",
+      "context": "Gaming content, battles, competitive play",
+      "energy": "high",
+      "bpm": 160,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 9,
+      "filename": "energetic_09.mp3",
+      "path": "/app/music/energetic_09.mp3",
+      "vibe": "Driving and rhythmic",
+      "context": "Movement content, travel, adventures",
+      "energy": "high",
+      "bpm": 135,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 10,
+      "filename": "energetic_10.mp3",
+      "path": "/app/music/energetic_10.mp3",
+      "vibe": "Explosive and epic",
+      "context": "Big moments, climaxes, dramatic reveals",
+      "energy": "high",
+      "bpm": 152,
+      "color": "#FF6B6B"
+    },
+    {
+      "id": 11,
+      "filename": "chill_01.mp3",
+      "path": "/app/music/chill_01.mp3",
+      "vibe": "Relaxed and smooth",
+      "context": "Talking head content, explanations, storytelling",
+      "energy": "low",
+      "bpm": 85,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 12,
+      "filename": "chill_02.mp3",
+      "path": "/app/music/chill_02.mp3",
+      "vibe": "Mellow and laid-back",
+      "context": "Lifestyle content, vlogs, casual conversations",
+      "energy": "low",
+      "bpm": 80,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 13,
+      "filename": "chill_03.mp3",
+      "path": "/app/music/chill_03.mp3",
+      "vibe": "Peaceful and calming",
+      "context": "Meditation, wellness, self-care content",
+      "energy": "low",
+      "bpm": 70,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 14,
+      "filename": "chill_04.mp3",
+      "path": "/app/music/chill_04.mp3",
+      "vibe": "Soft and gentle",
+      "context": "Morning routines, slow living, cozy vibes",
+      "energy": "low",
+      "bpm": 75,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 15,
+      "filename": "chill_05.mp3",
+      "path": "/app/music/chill_05.mp3",
+      "vibe": "Lo-fi study beats",
+      "context": "Tutorials, how-to content, educational videos",
+      "energy": "low",
+      "bpm": 78,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 16,
+      "filename": "chill_06.mp3",
+      "path": "/app/music/chill_06.mp3",
+      "vibe": "Dreamy and atmospheric",
+      "context": "Reflective moments, thinking content, introspection",
+      "energy": "low",
+      "bpm": 72,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 17,
+      "filename": "chill_07.mp3",
+      "path": "/app/music/chill_07.mp3",
+      "vibe": "Cozy and warm",
+      "context": "Home content, cooking, crafts, hobbies",
+      "energy": "low",
+      "bpm": 82,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 18,
+      "filename": "chill_08.mp3",
+      "path": "/app/music/chill_08.mp3",
+      "vibe": "Jazzy and sophisticated",
+      "context": "Coffee shop vibes, intellectual content, reviews",
+      "energy": "low",
+      "bpm": 88,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 19,
+      "filename": "chill_09.mp3",
+      "path": "/app/music/chill_09.mp3",
+      "vibe": "Minimalist and clean",
+      "context": "Product showcases, unboxings, aesthetic content",
+      "energy": "low",
+      "bpm": 76,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 20,
+      "filename": "chill_10.mp3",
+      "path": "/app/music/chill_10.mp3",
+      "vibe": "Ambient and spacious",
+      "context": "Nature content, travel scenery, peaceful moments",
+      "energy": "low",
+      "bpm": 65,
+      "color": "#4ECDC4"
+    },
+    {
+      "id": 21,
+      "filename": "cinematic_01.mp3",
+      "path": "/app/music/cinematic_01.mp3",
+      "vibe": "Epic and dramatic",
+      "context": "Achievements, milestones, big announcements",
+      "energy": "high",
+      "bpm": 120,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 22,
+      "filename": "cinematic_02.mp3",
+      "path": "/app/music/cinematic_02.mp3",
+      "vibe": "Heroic and inspiring",
+      "context": "Success stories, transformations, before/after",
+      "energy": "high",
+      "bpm": 115,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 23,
+      "filename": "cinematic_03.mp3",
+      "path": "/app/music/cinematic_03.mp3",
+      "vibe": "Majestic and grand",
+      "context": "Product launches, reveals, special moments",
+      "energy": "medium",
+      "bpm": 110,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 24,
+      "filename": "cinematic_04.mp3",
+      "path": "/app/music/cinematic_04.mp3",
+      "vibe": "Emotional and uplifting",
+      "context": "Heartfelt moments, testimonials, personal stories",
+      "energy": "medium",
+      "bpm": 100,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 25,
+      "filename": "cinematic_05.mp3",
+      "path": "/app/music/cinematic_05.mp3",
+      "vibe": "Suspenseful and mysterious",
+      "context": "Teasers, mysteries, plot twists",
+      "energy": "medium",
+      "bpm": 95,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 26,
+      "filename": "cinematic_06.mp3",
+      "path": "/app/music/cinematic_06.mp3",
+      "vibe": "Triumphant and powerful",
+      "context": "Victories, accomplishments, proud moments",
+      "energy": "high",
+      "bpm": 125,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 27,
+      "filename": "cinematic_07.mp3",
+      "path": "/app/music/cinematic_07.mp3",
+      "vibe": "Dark and brooding",
+      "context": "Serious topics, dramatic storytelling, tension",
+      "energy": "medium",
+      "bpm": 90,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 28,
+      "filename": "cinematic_08.mp3",
+      "path": "/app/music/cinematic_08.mp3",
+      "vibe": "Adventurous and bold",
+      "context": "Travel adventures, exploration, journeys",
+      "energy": "high",
+      "bpm": 118,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 29,
+      "filename": "cinematic_09.mp3",
+      "path": "/app/music/cinematic_09.mp3",
+      "vibe": "Nostalgic and reflective",
+      "context": "Throwback content, memories, sentimental moments",
+      "energy": "low",
+      "bpm": 85,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 30,
+      "filename": "cinematic_10.mp3",
+      "path": "/app/music/cinematic_10.mp3",
+      "vibe": "Fantasy and magical",
+      "context": "Creative content, art, imaginative storytelling",
+      "energy": "medium",
+      "bpm": 105,
+      "color": "#FFD93D"
+    },
+    {
+      "id": 31,
+      "filename": "trap_01.mp3",
+      "path": "/app/music/trap_01.mp3",
+      "vibe": "Hard-hitting trap",
+      "context": "Hype moments, flex content, viral challenges",
+      "energy": "high",
+      "bpm": 150,
+      "color": "#F38181"
+    },
+    {
+      "id": 32,
+      "filename": "trap_02.mp3",
+      "path": "/app/music/trap_02.mp3",
+      "vibe": "Dark and heavy trap",
+      "context": "Edgy content, street culture, attitude",
+      "energy": "high",
+      "bpm": 145,
+      "color": "#F38181"
+    },
+    {
+      "id": 33,
+      "filename": "trap_03.mp3",
+      "path": "/app/music/trap_03.mp3",
+      "vibe": "Bouncy and rhythmic",
+      "context": "Dance content, trends, TikTok challenges",
+      "energy": "high",
+      "bpm": 140,
+      "color": "#F38181"
+    },
+    {
+      "id": 34,
+      "filename": "trap_04.mp3",
+      "path": "/app/music/trap_04.mp3",
+      "vibe": "Melodic trap",
+      "context": "Fashion content, lifestyle, aesthetic",
+      "energy": "medium",
+      "bpm": 135,
+      "color": "#F38181"
+    },
+    {
+      "id": 35,
+      "filename": "trap_05.mp3",
+      "path": "/app/music/trap_05.mp3",
+      "vibe": "808-heavy banger",
+      "context": "Car content, tech reviews, product showcases",
+      "energy": "high",
+      "bpm": 155,
+      "color": "#F38181"
+    },
+    {
+      "id": 36,
+      "filename": "ambient_01.mp3",
+      "path": "/app/music/ambient_01.mp3",
+      "vibe": "Atmospheric and moody",
+      "context": "Emotional moments, deep thoughts, vulnerability",
+      "energy": "low",
+      "bpm": 60,
+      "color": "#AA96DA"
+    },
+    {
+      "id": 37,
+      "filename": "ambient_02.mp3",
+      "path": "/app/music/ambient_02.mp3",
+      "vibe": "Ethereal and floating",
+      "context": "Spiritual content, meditation, mindfulness",
+      "energy": "low",
+      "bpm": 55,
+      "color": "#AA96DA"
+    },
+    {
+      "id": 38,
+      "filename": "ambient_03.mp3",
+      "path": "/app/music/ambient_03.mp3",
+      "vibe": "Space and science",
+      "context": "Educational content, science, technology",
+      "energy": "low",
+      "bpm": 68,
+      "color": "#AA96DA"
+    },
+    {
+      "id": 39,
+      "filename": "ambient_04.mp3",
+      "path": "/app/music/ambient_04.mp3",
+      "vibe": "Dark ambient",
+      "context": "Mystery content, horror, suspense",
+      "energy": "low",
+      "bpm": 50,
+      "color": "#AA96DA"
+    },
+    {
+      "id": 40,
+      "filename": "ambient_05.mp3",
+      "path": "/app/music/ambient_05.mp3",
+      "vibe": "Textured and layered",
+      "context": "Artistic content, abstract concepts, creativity",
+      "energy": "low",
+      "bpm": 62,
+      "color": "#AA96DA"
+    }
+  ]
+}

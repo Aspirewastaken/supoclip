@@ -19,24 +19,148 @@ import srt
 from datetime import timedelta
 
 from .config import Config
+from .utils.performance import parallel_processor, performance_monitor, get_optimized_ffmpeg_params
 
 logger = logging.getLogger(__name__)
 config = Config()
 
+
+def get_available_fonts() -> List[str]:
+    """
+    Get list of available font names from the fonts directory.
+
+    Returns:
+        List of font names (without .ttf extension)
+    """
+    fonts_dir = Path(__file__).parent.parent / "fonts"
+    if not fonts_dir.exists():
+        logger.warning("Fonts directory not found")
+        return []
+
+    font_names = [f.stem for f in fonts_dir.glob("*.ttf")]
+    return sorted(font_names)
+
+
+def validate_font(font_family: str) -> Tuple[bool, Optional[str], str]:
+    """
+    Validate if a font exists and return the path.
+
+    Args:
+        font_family: Name of the font family (without .ttf extension)
+
+    Returns:
+        Tuple of (is_valid, font_path, message)
+        - is_valid: True if font exists
+        - font_path: Path to the font file (or fallback)
+        - message: Info/warning message about the validation
+    """
+    fonts_dir = Path(__file__).parent.parent / "fonts"
+    requested_font_path = fonts_dir / f"{font_family}.ttf"
+
+    # Check if requested font exists
+    if requested_font_path.exists():
+        return True, str(requested_font_path), f"Font '{font_family}' is available"
+
+    # Font not found - try fallbacks
+    fallback_fonts = ["TikTokSans-Regular", "THEBOLDFONT-FREEVERSION"]
+    available_fonts = get_available_fonts()
+
+    for fallback in fallback_fonts:
+        fallback_path = fonts_dir / f"{fallback}.ttf"
+        if fallback_path.exists():
+            warning_msg = (
+                f"Font '{font_family}' not found. Using fallback: '{fallback}'. "
+                f"Available fonts: {', '.join(available_fonts)}"
+            )
+            logger.warning(warning_msg)
+            return False, str(fallback_path), warning_msg
+
+    # No fonts available at all
+    error_msg = f"No fonts found in {fonts_dir}. Please install fonts first."
+    logger.error(error_msg)
+    return False, None, error_msg
+
+
+def load_font_metadata(font_family: str) -> Optional[Dict[str, Any]]:
+    """
+    Load metadata for a specific font from fonts.json.
+
+    Args:
+        font_family: Name of the font family
+
+    Returns:
+        Font metadata dict or None if not found
+    """
+    fonts_json_path = Path(__file__).parent.parent / "fonts" / "fonts.json"
+
+    if not fonts_json_path.exists():
+        return None
+
+    try:
+        with open(fonts_json_path, 'r', encoding='utf-8') as f:
+            fonts_data = json.load(f)
+            for font in fonts_data.get("fonts", []):
+                if font.get("name") == font_family:
+                    return font
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"Failed to load font metadata: {e}")
+
+    return None
+
+
 class VideoProcessor:
     """Handles video processing operations with optimized settings."""
 
-    def __init__(self, font_family: str = "THEBOLDFONT-FREEVERSION", font_size: int = 24, font_color: str = "#FFFFFF"):
+    def __init__(self, font_family: str = "THEBOLDFONT-FREEVERSION", font_size: int = 24, font_color: str = "#FFFFFF", use_gpu: bool = True):
         self.font_family = font_family
         self.font_size = font_size
         self.font_color = font_color
-        self.font_path = str(Path(__file__).parent.parent / "fonts" / f"{font_family}.ttf")
-        # Fallback to default font if custom font doesn't exist
-        if not Path(self.font_path).exists():
-            self.font_path = str(Path(__file__).parent.parent / "fonts" / "THEBOLDFONT-FREEVERSION.ttf")
+        self.use_gpu = use_gpu
+
+        # Validate font and get path (with fallback)
+        is_valid, font_path, message = validate_font(font_family)
+
+        if not is_valid:
+            logger.warning(f"Font validation failed: {message}")
+            if font_path:
+                self.font_path = font_path
+                self.font_family = Path(font_path).stem
+            else:
+                raise ValueError(f"No valid fonts available. {message}")
+        else:
+            self.font_path = font_path
+            logger.info(f"Using font: {font_family} at {font_path}")
+
+        # Load font metadata for recommendations
+        self.font_metadata = load_font_metadata(self.font_family)
+        if self.font_metadata:
+            # Apply recommended size if not explicitly set and size is default
+            recommended_size = self.font_metadata.get("recommended_size", {})
+            if font_size == 24 and "default" in recommended_size:
+                self.font_size = recommended_size["default"]
+                logger.info(f"Applied recommended font size: {self.font_size}px")
+        else:
+            logger.debug(f"No metadata found for font: {self.font_family}")
+
+        # Detect GPU capabilities if enabled
+        if self.use_gpu:
+            from .utils.performance import get_gpu_info
+            self.gpu_info = get_gpu_info()
+            if self.gpu_info.available:
+                logger.info(f"GPU acceleration enabled: {self.gpu_info.name} ({self.gpu_info.recommended_encoder})")
+            else:
+                logger.info("GPU acceleration requested but not available - falling back to CPU")
+        else:
+            self.gpu_info = None
+            logger.info("GPU acceleration disabled - using CPU encoding")
 
     def get_optimal_encoding_settings(self, target_quality: str = "high") -> Dict[str, Any]:
-        """Get optimal encoding settings for different quality levels."""
+        """Get optimal encoding settings for different quality levels with GPU support."""
+        # Use GPU-optimized settings if available
+        if self.use_gpu and self.gpu_info and self.gpu_info.available:
+            return get_optimized_ffmpeg_params(target_quality)
+
+        # Fallback to CPU settings
         settings = {
             "high": {
                 "codec": "libx264",
@@ -261,11 +385,27 @@ def detect_optimal_crop_region(video_clip: VideoFileClip, start_time: float, end
 
         return (x_offset, y_offset, new_width, new_height)
 
-def detect_faces_in_clip(video_clip: VideoFileClip, start_time: float, end_time: float) -> List[Tuple[int, int, int, float]]:
+def detect_faces_in_clip(video_clip: VideoFileClip, start_time: float, end_time: float, use_cache: bool = True) -> List[Tuple[int, int, int, float]]:
     """
     Improved face detection using multiple methods and temporal consistency.
     Returns list of (x, y, area, confidence) tuples.
+
+    Args:
+        video_clip: Video clip to analyze
+        start_time: Start time in seconds
+        end_time: End time in seconds
+        use_cache: Whether to use cached face detection results
     """
+    from .utils.performance import video_cache
+
+    # Check cache if enabled
+    if use_cache:
+        cache_key = f"face_detection_{id(video_clip)}_{start_time}_{end_time}"
+        cached_result = video_cache.get("face_detection", cache_key)
+        if cached_result is not None:
+            logger.info(f"Using cached face detection for {start_time:.1f}s-{end_time:.1f}s")
+            return cached_result
+
     face_centers = []
 
     try:
@@ -423,6 +563,13 @@ def detect_faces_in_clip(video_clip: VideoFileClip, start_time: float, end_time:
             face_centers = filter_face_outliers(face_centers)
 
         logger.info(f"Detected {len(face_centers)} reliable face centers")
+
+        # Cache the result if enabled
+        if use_cache:
+            from .utils.performance import video_cache
+            cache_key = f"face_detection_{id(video_clip)}_{start_time}_{end_time}"
+            video_cache.set("face_detection", face_centers, cache_key)
+
         return face_centers
 
     except Exception as e:
@@ -578,8 +725,13 @@ def create_assemblyai_subtitles(video_path: Path, clip_start: float, clip_end: f
     logger.info(f"Created {len(subtitle_clips)} subtitle elements from AssemblyAI data")
     return subtitle_clips
 
-def create_optimized_clip(video_path: Path, start_time: float, end_time: float, output_path: Path, add_subtitles: bool = True, font_family: str = "THEBOLDFONT-FREEVERSION", font_size: int = 24, font_color: str = "#FFFFFF") -> bool:
+def create_optimized_clip(video_path: Path, start_time: float, end_time: float, output_path: Path, add_subtitles: bool = True, font_family: str = "THEBOLDFONT-FREEVERSION", font_size: int = 24, font_color: str = "#FFFFFF", use_gpu: bool = True) -> bool:
     """Create optimized clip with AssemblyAI subtitles. Preserves original aspect ratio (NO CROP)."""
+    video = None
+    clip = None
+    cropped_clip = None
+    final_clip = None
+
     try:
         duration = end_time - start_time
         if duration <= 0:
@@ -593,7 +745,6 @@ def create_optimized_clip(video_path: Path, start_time: float, end_time: float, 
 
         if start_time >= video.duration:
             logger.error(f"Start time {start_time}s exceeds video duration {video.duration:.1f}s")
-            video.close()
             return False
 
         end_time = min(end_time, video.duration)
@@ -609,7 +760,7 @@ def create_optimized_clip(video_path: Path, start_time: float, end_time: float, 
             x2=x_offset + new_width, y2=y_offset + new_height
         )
 
-        # Add AssemblyAI subtitles
+        # Add AssemblyAI subtitles (optimized: fewer intermediate clips)
         final_clips = [cropped_clip]
 
         if add_subtitles:
@@ -618,24 +769,21 @@ def create_optimized_clip(video_path: Path, start_time: float, end_time: float, 
             )
             final_clips.extend(subtitle_clips)
 
-        # Compose and encode
-        final_clip = CompositeVideoClip(final_clips) if len(final_clips) > 1 else cropped_clip
+        # Compose and encode (minimize intermediate composites)
+        final_clip = CompositeVideoClip(final_clips, size=(new_width, new_height)) if len(final_clips) > 1 else cropped_clip
 
-        processor = VideoProcessor(font_family, font_size, font_color)
+        processor = VideoProcessor(font_family, font_size, font_color, use_gpu=use_gpu)
         encoding_settings = processor.get_optimal_encoding_settings("high")
 
+        # Optimized encoding: reduce thread overhead, use direct file writing
         final_clip.write_videofile(
             str(output_path),
             temp_audiofile='temp-audio.m4a',
             remove_temp=True,
             logger=None,
+            threads=4,  # Limit threads to reduce overhead
             **encoding_settings
         )
-
-        # Cleanup
-        final_clip.close()
-        clip.close()
-        video.close()
 
         logger.info(f"Successfully created clip: {output_path}")
         return True
@@ -643,6 +791,20 @@ def create_optimized_clip(video_path: Path, start_time: float, end_time: float, 
     except Exception as e:
         logger.error(f"Failed to create clip: {e}")
         return False
+
+    finally:
+        # Ensure all resources are cleaned up properly
+        try:
+            if final_clip is not None:
+                final_clip.close()
+            if cropped_clip is not None and cropped_clip != final_clip:
+                cropped_clip.close()
+            if clip is not None:
+                clip.close()
+            if video is not None:
+                video.close()
+        except Exception as cleanup_error:
+            logger.warning(f"Error during cleanup: {cleanup_error}")
 
 def create_clips_from_segments(video_path: Path, segments: List[Dict[str, Any]], output_dir: Path, font_family: str = "THEBOLDFONT-FREEVERSION", font_size: int = 24, font_color: str = "#FFFFFF") -> List[Dict[str, Any]]:
     """Create optimized video clips from segments."""
@@ -692,6 +854,112 @@ def create_clips_from_segments(video_path: Path, segments: List[Dict[str, Any]],
             logger.error(f"Error processing clip {i+1}: {e}")
 
     logger.info(f"Successfully created {len(clips_info)}/{len(segments)} clips")
+    return clips_info
+
+
+def _create_single_clip_task(
+    video_path: Path,
+    segment: Dict[str, Any],
+    output_dir: Path,
+    clip_index: int,
+    font_family: str,
+    font_size: int,
+    font_color: str,
+    use_gpu: bool = True
+) -> Optional[Dict[str, Any]]:
+    """
+    Helper function for parallel clip creation.
+    Must be at module level for ProcessPoolExecutor compatibility.
+    """
+    try:
+        start_seconds = parse_timestamp_to_seconds(segment['start_time'])
+        end_seconds = parse_timestamp_to_seconds(segment['end_time'])
+        duration = end_seconds - start_seconds
+
+        if duration <= 0:
+            logger.warning(f"Skipping clip {clip_index}: invalid duration {duration:.1f}s")
+            return None
+
+        clip_filename = f"clip_{clip_index}_{segment['start_time'].replace(':', '')}-{segment['end_time'].replace(':', '')}.mp4"
+        clip_path = output_dir / clip_filename
+
+        success = create_optimized_clip(
+            video_path, start_seconds, end_seconds, clip_path,
+            True, font_family, font_size, font_color, use_gpu
+        )
+
+        if success:
+            return {
+                "clip_id": clip_index,
+                "filename": clip_filename,
+                "path": str(clip_path),
+                "start_time": segment['start_time'],
+                "end_time": segment['end_time'],
+                "duration": duration,
+                "text": segment['text'],
+                "relevance_score": segment['relevance_score'],
+                "reasoning": segment['reasoning']
+            }
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Error processing clip {clip_index}: {e}")
+        return None
+
+
+def create_clips_from_segments_parallel(
+    video_path: Path,
+    segments: List[Dict[str, Any]],
+    output_dir: Path,
+    font_family: str = "THEBOLDFONT-FREEVERSION",
+    font_size: int = 24,
+    font_color: str = "#FFFFFF",
+    max_workers: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """
+    Create optimized video clips from segments using parallel processing.
+
+    This is significantly faster than sequential processing when creating
+    multiple clips, especially on multi-core systems.
+
+    Args:
+        video_path: Path to source video
+        segments: List of segment dictionaries with timing and metadata
+        output_dir: Output directory for clips
+        font_family: Font family for subtitles
+        font_size: Font size for subtitles
+        font_color: Font color for subtitles
+        max_workers: Maximum parallel workers (defaults to CPU count - 1)
+
+    Returns:
+        List of clip info dictionaries
+    """
+    logger.info(f"Creating {len(segments)} clips in parallel")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Prepare tasks for parallel processing
+    clip_tasks = []
+    for i, segment in enumerate(segments):
+        task = (
+            _create_single_clip_task,
+            (video_path, segment, output_dir, i + 1, font_family, font_size, font_color),
+            {}
+        )
+        clip_tasks.append(task)
+
+    # Process clips in parallel using ThreadPoolExecutor
+    # (ThreadPool is better than ProcessPool for MoviePy due to GIL release during encoding)
+    processor = parallel_processor if max_workers is None else ParallelProcessor(max_workers)
+    from .utils.performance import ParallelProcessor
+
+    results = processor.process_clips_parallel(clip_tasks, use_processes=False)
+
+    # Filter out None results and sort by clip_id
+    clips_info = [r for r in results if r is not None]
+    clips_info.sort(key=lambda x: x['clip_id'])
+
+    logger.info(f"Successfully created {len(clips_info)}/{len(segments)} clips in parallel")
     return clips_info
 
 def get_available_transitions() -> List[str]:

@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 import logging
 import uuid
+import json
 import aiofiles
 
 from ...config import Config
@@ -17,23 +18,89 @@ router = APIRouter(tags=["media"])
 
 @router.get("/fonts")
 async def get_available_fonts():
-    """Get list of available fonts."""
+    """
+    Get list of available fonts with metadata.
+
+    Returns fonts with metadata from fonts.json manifest, including:
+    - Basic info (name, display name, family)
+    - Styling (category, style, weights)
+    - Recommendations (sizes, use cases)
+    - Installation status (whether font file is present)
+    - Preview and licensing information
+    """
     try:
         fonts_dir = Path(__file__).parent.parent.parent.parent / "fonts"
         if not fonts_dir.exists():
             return {"fonts": [], "message": "Fonts directory not found"}
 
-        font_files = []
-        for font_file in fonts_dir.glob("*.ttf"):
-            font_name = font_file.stem
-            font_files.append({
-                "name": font_name,
-                "display_name": font_name.replace("-", " ").replace("_", " ").title(),
-                "file_path": str(font_file)
-            })
+        # Load font metadata from fonts.json
+        fonts_json_path = fonts_dir / "fonts.json"
+        font_metadata = {}
 
-        logger.info(f"Found {len(font_files)} available fonts")
-        return {"fonts": font_files}
+        if fonts_json_path.exists():
+            try:
+                with open(fonts_json_path, 'r', encoding='utf-8') as f:
+                    fonts_data = json.load(f)
+                    # Create lookup dictionary by font name
+                    for font in fonts_data.get("fonts", []):
+                        font_metadata[font["name"]] = font
+                logger.info(f"Loaded metadata for {len(font_metadata)} fonts from fonts.json")
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse fonts.json: {e}")
+
+        # Scan for actual font files
+        installed_fonts = set()
+        for font_file in fonts_dir.glob("*.ttf"):
+            installed_fonts.add(font_file.stem)
+
+        # Build response with merged data
+        font_list = []
+
+        # First, add all fonts from metadata
+        for font_name, metadata in font_metadata.items():
+            is_installed = metadata["name"] in installed_fonts
+            font_info = {
+                **metadata,  # Include all metadata
+                "installed": is_installed,
+                "available": is_installed,  # Alias for clarity
+                "download_url_api": f"/fonts/{metadata['name']}" if is_installed else None
+            }
+            font_list.append(font_info)
+
+        # Then, add any fonts that exist but aren't in metadata
+        for font_name in installed_fonts:
+            if font_name not in font_metadata:
+                font_list.append({
+                    "id": font_name.lower().replace(" ", "-"),
+                    "name": font_name,
+                    "display_name": font_name.replace("-", " ").replace("_", " ").title(),
+                    "family": font_name.split("-")[0],
+                    "file": f"{font_name}.ttf",
+                    "installed": True,
+                    "available": True,
+                    "category": "unknown",
+                    "description": "Custom font (no metadata available)",
+                    "download_url_api": f"/fonts/{font_name}"
+                })
+
+        # Sort: installed first, then alphabetically
+        font_list.sort(key=lambda x: (not x["installed"], x["display_name"]))
+
+        # Get summary stats
+        installed_count = sum(1 for f in font_list if f["installed"])
+        available_count = sum(1 for f in font_list if not f["installed"])
+
+        logger.info(f"Found {installed_count} installed fonts, {available_count} available to download")
+
+        return {
+            "fonts": font_list,
+            "summary": {
+                "total": len(font_list),
+                "installed": installed_count,
+                "available_to_download": available_count
+            },
+            "metadata": fonts_data.get("metadata", {}) if fonts_json_path.exists() else {}
+        }
 
     except Exception as e:
         logger.error(f"Error retrieving fonts: {str(e)}")

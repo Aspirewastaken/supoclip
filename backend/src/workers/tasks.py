@@ -75,6 +75,9 @@ async def process_video_task(
 # Import mass clip generation task
 from .mass_clip_tasks import generate_mass_clips_task
 
+# Import full matrix generation task
+from .full_matrix_task import generate_full_matrix_task
+
 
 # Worker configuration for arq
 class WorkerSettings:
@@ -85,8 +88,12 @@ class WorkerSettings:
 
     config = Config()
 
-    # Functions to run - include both regular and mass generation tasks
-    functions = [process_video_task, generate_mass_clips_task]
+    # Functions to run - include all worker tasks
+    functions = [
+        process_video_task,
+        generate_mass_clips_task,
+        generate_full_matrix_task
+    ]
     queue_name = "supoclip_tasks"
 
     # Redis settings from environment

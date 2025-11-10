@@ -1,0 +1,167 @@
+{
+  "fonts": [
+    {
+      "id": "theboldfont-freeversion",
+      "name": "THEBOLDFONT-FREEVERSION",
+      "display_name": "The Bold Font",
+      "family": "The Bold Font",
+      "category": "display",
+      "style": "bold",
+      "weights": [700],
+      "variants": ["regular"],
+      "file": "THEBOLDFONT-FREEVERSION.ttf",
+      "license": "Free for personal and commercial use",
+      "description": "A bold, impactful display font perfect for attention-grabbing captions",
+      "recommended_for": ["captions", "titles", "social-media"],
+      "recommended_size": {
+        "min": 24,
+        "max": 72,
+        "default": 48
+      },
+      "preview_text": "Bold Impact",
+      "installed": true
+    },
+    {
+      "id": "tiktoksans-regular",
+      "name": "TikTokSans-Regular",
+      "display_name": "TikTok Sans",
+      "family": "TikTok Sans",
+      "category": "sans-serif",
+      "style": "regular",
+      "weights": [400],
+      "variants": ["regular"],
+      "file": "TikTokSans-Regular.ttf",
+      "license": "TikTok proprietary (use with caution)",
+      "description": "The official TikTok font, instantly recognizable for social media content",
+      "recommended_for": ["captions", "social-media"],
+      "recommended_size": {
+        "min": 20,
+        "max": 48,
+        "default": 32
+      },
+      "preview_text": "TikTok Style",
+      "installed": true
+    },
+    {
+      "id": "montserrat-bold",
+      "name": "Montserrat-Bold",
+      "display_name": "Montserrat Bold",
+      "family": "Montserrat",
+      "category": "sans-serif",
+      "style": "bold",
+      "weights": [700],
+      "variants": ["bold"],
+      "file": "Montserrat-Bold.ttf",
+      "license": "SIL Open Font License",
+      "description": "A geometric sans-serif inspired by urban typography, excellent for modern content",
+      "recommended_for": ["captions", "titles", "social-media"],
+      "recommended_size": {
+        "min": 24,
+        "max": 64,
+        "default": 40
+      },
+      "preview_text": "Modern & Clean",
+      "download_url": "https://fonts.google.com/specimen/Montserrat",
+      "alternative_to": "Proxima Nova",
+      "installed": false
+    },
+    {
+      "id": "inter-bold",
+      "name": "Inter-Bold",
+      "display_name": "Inter Bold",
+      "family": "Inter",
+      "category": "sans-serif",
+      "style": "bold",
+      "weights": [700],
+      "variants": ["bold"],
+      "file": "Inter-Bold.ttf",
+      "license": "SIL Open Font License",
+      "description": "Designed for computer screens with excellent readability at all sizes",
+      "recommended_for": ["captions", "ui", "subtitles"],
+      "recommended_size": {
+        "min": 20,
+        "max": 56,
+        "default": 36
+      },
+      "preview_text": "Crystal Clear",
+      "download_url": "https://fonts.google.com/specimen/Inter",
+      "alternative_to": "Proxima Nova",
+      "installed": false
+    },
+    {
+      "id": "poppins-bold",
+      "name": "Poppins-Bold",
+      "display_name": "Poppins Bold",
+      "family": "Poppins",
+      "category": "sans-serif",
+      "style": "bold",
+      "weights": [700],
+      "variants": ["bold"],
+      "file": "Poppins-Bold.ttf",
+      "license": "SIL Open Font License",
+      "description": "A geometric sans-serif with a friendly, approachable style perfect for social media",
+      "recommended_for": ["captions", "titles", "social-media"],
+      "recommended_size": {
+        "min": 24,
+        "max": 60,
+        "default": 38
+      },
+      "preview_text": "Friendly & Bold",
+      "download_url": "https://fonts.google.com/specimen/Poppins",
+      "alternative_to": "Proxima Nova",
+      "installed": false
+    },
+    {
+      "id": "roboto-bold",
+      "name": "Roboto-Bold",
+      "display_name": "Roboto Bold",
+      "family": "Roboto",
+      "category": "sans-serif",
+      "style": "bold",
+      "weights": [700],
+      "variants": ["bold"],
+      "file": "Roboto-Bold.ttf",
+      "license": "Apache License 2.0",
+      "description": "Google's signature font, versatile and highly readable on all platforms",
+      "recommended_for": ["captions", "ui", "subtitles"],
+      "recommended_size": {
+        "min": 20,
+        "max": 54,
+        "default": 34
+      },
+      "preview_text": "Universal",
+      "download_url": "https://fonts.google.com/specimen/Roboto",
+      "alternative_to": "Proxima Nova",
+      "installed": false
+    },
+    {
+      "id": "opensans-bold",
+      "name": "OpenSans-Bold",
+      "display_name": "Open Sans Bold",
+      "family": "Open Sans",
+      "category": "sans-serif",
+      "style": "bold",
+      "weights": [700],
+      "variants": ["bold"],
+      "file": "OpenSans-Bold.ttf",
+      "license": "SIL Open Font License",
+      "description": "Optimized for print, web, and mobile interfaces with excellent legibility",
+      "recommended_for": ["captions", "subtitles", "ui"],
+      "recommended_size": {
+        "min": 20,
+        "max": 52,
+        "default": 32
+      },
+      "preview_text": "Always Readable",
+      "download_url": "https://fonts.google.com/specimen/Open+Sans",
+      "alternative_to": "Proxima Nova",
+      "installed": false
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2025-11-10",
+    "default_font": "TikTokSans-Regular",
+    "fallback_font": "THEBOLDFONT-FREEVERSION"
+  }
+}

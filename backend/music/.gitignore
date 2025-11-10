@@ -1,0 +1,12 @@
+# Ignore all music files (users must add their own licensed music)
+*.mp3
+*.m4a
+*.wav
+*.aac
+*.ogg
+*.flac
+
+# Keep the manifest and documentation
+!songs.json
+!README.md
+!.gitignore

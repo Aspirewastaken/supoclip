@@ -1,0 +1,24 @@
+# Backup System Dependencies
+# These dependencies are required for the SupoClip backup system
+
+# Already included in main pyproject.toml:
+# - apscheduler>=3.10.0 (for backup scheduling)
+# - aiohttp>=3.9.0 (for webhook notifications)
+# - asyncpg>=0.29.0 (for database operations)
+# - sqlalchemy>=2.0.25 (for database models)
+
+# Additional dependencies needed for backup system:
+
+# AWS S3 and Backblaze B2 support
+boto3>=1.34.0
+
+# Optional: Enhanced encryption (if implementing encryption)
+# cryptography>=41.0.0
+
+# Optional: Email notifications (if implementing SMTP)
+# aiosmtplib>=3.0.0
+
+# System dependencies (install via apt/yum):
+# - postgresql-client (for pg_dump, pg_restore, psql)
+#   Ubuntu/Debian: apt-get install postgresql-client
+#   RHEL/CentOS: yum install postgresql

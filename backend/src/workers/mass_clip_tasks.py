@@ -203,6 +203,28 @@ async def generate_mass_clips_task(
                 )
                 await db.commit()
 
+                # Send webhook notifications for task completion
+                from ..webhooks.manager import WebhookManager
+                webhook_manager = WebhookManager(db)
+                await webhook_manager.notify_task_event(
+                    user_id=user_id,
+                    task_id=task_id,
+                    event_type="task.completed",
+                    additional_data={
+                        "clips_generated": len(generated_paths),
+                        "target_clips": target_clips,
+                        "consensus_level": deliberation.consensus_level
+                    }
+                )
+                await webhook_manager.notify_task_event(
+                    user_id=user_id,
+                    task_id=task_id,
+                    event_type="clips.ready",
+                    additional_data={
+                        "clips_count": len(generated_paths)
+                    }
+                )
+
         logger.info(f"✅ Saved {len(clip_dicts)} clips to database")
 
         await progress.update(
@@ -233,5 +255,17 @@ async def generate_mass_clips_task(
                 {"status": "error", "task_id": task_id}
             )
             await db.commit()
+
+            # Send webhook notification for task failure
+            from ..webhooks.manager import WebhookManager
+            webhook_manager = WebhookManager(db)
+            await webhook_manager.notify_task_event(
+                user_id=user_id,
+                task_id=task_id,
+                event_type="task.failed",
+                additional_data={
+                    "error": str(e)
+                }
+            )
 
         raise

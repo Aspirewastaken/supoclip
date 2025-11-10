@@ -1,0 +1,752 @@
+{
+  "info": {
+    "name": "SupoClip API",
+    "description": "AI-powered video clipping tool that transforms long-form content into viral short clips",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "user_id",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{user_id}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "your-user-uuid",
+      "type": "string"
+    },
+    {
+      "key": "task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clip_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Core",
+      "item": [
+        {
+          "name": "API Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            },
+            "description": "Get basic API information and links to documentation"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/db",
+              "host": ["{{base_url}}"],
+              "path": ["health", "db"]
+            },
+            "description": "Check if the database is accessible and responding"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Video Processing",
+      "item": [
+        {
+          "name": "Process Video (Sync)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('task_id', jsonData.task_id);",
+                  "    ",
+                  "    if (jsonData.clips && jsonData.clips.length > 0) {",
+                  "        pm.collectionVariables.set('clip_id', jsonData.clips[0].id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": {\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"\n  },\n  \"font_options\": {\n    \"font_family\": \"TikTokSans-Regular\",\n    \"font_size\": 24,\n    \"font_color\": \"#FFFFFF\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/start",
+              "host": ["{{base_url}}"],
+              "path": ["start"]
+            },
+            "description": "Process a video and generate clips immediately (synchronous operation)"
+          }
+        },
+        {
+          "name": "Process Video (Async)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('task_id', jsonData.task_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": {\n    \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"\n  },\n  \"font_options\": {\n    \"font_family\": \"TikTokSans-Regular\",\n    \"font_size\": 24,\n    \"font_color\": \"#FFFFFF\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/start-with-progress",
+              "host": ["{{base_url}}"],
+              "path": ["start-with-progress"]
+            },
+            "description": "Process a video asynchronously with real-time progress updates via SSE"
+          }
+        },
+        {
+          "name": "Upload Video",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "video",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": ["{{base_url}}"],
+              "path": ["upload"]
+            },
+            "description": "Upload a video file for processing"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["tasks"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "List all tasks for the authenticated user"
+          }
+        },
+        {
+          "name": "Get Task Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Get detailed information about a specific task"
+          }
+        },
+        {
+          "name": "Get Task Clips",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/clips",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "clips"]
+            },
+            "description": "Get all clips for a specific task"
+          }
+        },
+        {
+          "name": "Get Task Progress (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/progress",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "progress"]
+            },
+            "description": "Real-time progress updates via Server-Sent Events"
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My Updated Title\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Update task details (title)"
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Delete a task and all associated clips"
+          }
+        },
+        {
+          "name": "Delete Clip",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/clips/{{clip_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "clips", "{{clip_id}}"]
+            },
+            "description": "Delete a specific clip"
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Titles",
+      "item": [
+        {
+          "name": "Generate Titles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transcript_text\": \"In this clip I reveal the secret to success...\",\n  \"platform\": \"tiktok\",\n  \"target_audience\": \"young entrepreneurs\",\n  \"key_topics\": [\"business\", \"success\"],\n  \"duration_seconds\": 15,\n  \"num_variations\": 10,\n  \"include_styles\": [\"question\", \"shocking\", \"curiosity\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/ai/generate-titles",
+              "host": ["{{base_url}}"],
+              "path": ["ai", "generate-titles"]
+            },
+            "description": "Generate viral titles for a video clip using multiple AI models"
+          }
+        },
+        {
+          "name": "Generate Titles for Clip",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai/generate-titles/clip/{{clip_id}}?platform=tiktok&num_variations=10",
+              "host": ["{{base_url}}"],
+              "path": ["ai", "generate-titles", "clip", "{{clip_id}}"],
+              "query": [
+                {
+                  "key": "platform",
+                  "value": "tiktok"
+                },
+                {
+                  "key": "num_variations",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Generate titles for an existing clip by ID"
+          }
+        },
+        {
+          "name": "Get Title Styles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai/title-styles",
+              "host": ["{{base_url}}"],
+              "path": ["ai", "title-styles"]
+            },
+            "description": "Get all available title styles with descriptions"
+          }
+        },
+        {
+          "name": "Get Platforms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ai/platforms",
+              "host": ["{{base_url}}"],
+              "path": ["ai", "platforms"]
+            },
+            "description": "Get all supported social media platforms"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Record Metrics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"view_metrics\": {\n    \"clip_id\": \"{{clip_id}}\",\n    \"platform\": \"tiktok\",\n    \"views\": 10000,\n    \"likes\": 1500,\n    \"comments\": 200,\n    \"shares\": 300,\n    \"date\": \"2025-11-10\"\n  },\n  \"performance_metrics\": {\n    \"clip_id\": \"{{clip_id}}\",\n    \"engagement_rate\": 15.5,\n    \"watch_time\": 12.3,\n    \"retention_rate\": 85.0\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/analytics/record",
+              "host": ["{{base_url}}"],
+              "path": ["analytics", "record"]
+            },
+            "description": "Record analytics metrics for a clip"
+          }
+        },
+        {
+          "name": "Get Clip Performance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/clip/{{clip_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["analytics", "clip", "{{clip_id}}"]
+            },
+            "description": "Get comprehensive performance metrics for a specific clip"
+          }
+        },
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/analytics/dashboard?limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["analytics", "dashboard"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get aggregated analytics dashboard statistics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calendar",
+      "item": [
+        {
+          "name": "Get Google OAuth URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/calendar/oauth/google/url",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "oauth", "google", "url"]
+            },
+            "description": "Get Google OAuth authorization URL"
+          }
+        },
+        {
+          "name": "Google OAuth Callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"authorization_code_from_google\",\n  \"state\": \"{{user_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/oauth/google/callback",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "oauth", "google", "callback"]
+            },
+            "description": "Handle Google OAuth callback and store credentials"
+          }
+        },
+        {
+          "name": "Add CalDAV Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"icloud\",\n  \"username\": \"apple_id@icloud.com\",\n  \"password\": \"app-specific-password\",\n  \"calendar_name\": \"Calendar\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/credentials/caldav",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "credentials", "caldav"]
+            },
+            "description": "Add CalDAV calendar credentials (iCloud, Nextcloud, etc.)"
+          }
+        },
+        {
+          "name": "List Credentials",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/calendar/credentials",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "credentials"]
+            },
+            "description": "List all calendar credentials for the authenticated user"
+          }
+        },
+        {
+          "name": "Schedule Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clip_id\": \"{{clip_id}}\",\n  \"scheduled_time\": \"2025-11-15T10:00:00Z\",\n  \"provider\": \"google\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/calendar/schedule",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "schedule"]
+            },
+            "description": "Schedule a clip to be posted at a specific time"
+          }
+        },
+        {
+          "name": "List Scheduled Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/calendar/events?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["calendar", "events"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "status",
+                  "value": "scheduled",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List scheduled posts for the authenticated user"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Watermarks",
+      "item": [
+        {
+          "name": "Upload Watermark",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "account_id",
+                  "value": "my_account",
+                  "type": "text"
+                },
+                {
+                  "key": "watermark",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/watermarks/upload",
+              "host": ["{{base_url}}"],
+              "path": ["watermarks", "upload"]
+            },
+            "description": "Upload a watermark video for a specific account"
+          }
+        },
+        {
+          "name": "List Watermarks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/watermarks",
+              "host": ["{{base_url}}"],
+              "path": ["watermarks"]
+            },
+            "description": "List all available watermarks"
+          }
+        },
+        {
+          "name": "Get Watermark",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/watermarks/my_account",
+              "host": ["{{base_url}}"],
+              "path": ["watermarks", "my_account"]
+            },
+            "description": "Get a specific watermark file"
+          }
+        },
+        {
+          "name": "Update Watermark Metadata",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": \"bottom_right\",\n  \"scale\": 0.15,\n  \"opacity\": 1.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/watermarks/my_account/metadata",
+              "host": ["{{base_url}}"],
+              "path": ["watermarks", "my_account", "metadata"]
+            },
+            "description": "Update watermark metadata (position, scale, opacity)"
+          }
+        },
+        {
+          "name": "Delete Watermark",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/watermarks/my_account",
+              "host": ["{{base_url}}"],
+              "path": ["watermarks", "my_account"]
+            },
+            "description": "Delete a watermark for a specific account"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posting Helper",
+      "item": [
+        {
+          "name": "Analyze Screenshot",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/posting/analyze-screenshot",
+              "host": ["{{base_url}}"],
+              "path": ["posting", "analyze-screenshot"]
+            },
+            "description": "Analyze a screenshot using vision AI to generate posting suggestions"
+          }
+        },
+        {
+          "name": "Generate Content",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/posting/generate-content?platform=tiktok&video_title=My Video",
+              "host": ["{{base_url}}"],
+              "path": ["posting", "generate-content"],
+              "query": [
+                {
+                  "key": "platform",
+                  "value": "tiktok"
+                },
+                {
+                  "key": "video_title",
+                  "value": "My Video"
+                }
+              ]
+            },
+            "description": "Generate platform-specific content without screenshot analysis"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resources",
+      "item": [
+        {
+          "name": "List Fonts",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/fonts",
+              "host": ["{{base_url}}"],
+              "path": ["fonts"]
+            },
+            "description": "List all available font families for subtitle customization"
+          }
+        },
+        {
+          "name": "Get Font File",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/fonts/TikTokSans-Regular",
+              "host": ["{{base_url}}"],
+              "path": ["fonts", "TikTokSans-Regular"]
+            },
+            "description": "Serve a specific font file"
+          }
+        },
+        {
+          "name": "List Transitions",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/transitions",
+              "host": ["{{base_url}}"],
+              "path": ["transitions"]
+            },
+            "description": "List all available transition effects"
+          }
+        }
+      ]
+    }
+  ]
+}

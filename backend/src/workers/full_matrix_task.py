@@ -179,6 +179,30 @@ async def generate_full_matrix_task(
             )
             await db.commit()
 
+            # Send webhook notifications for task completion
+            from ..webhooks.manager import WebhookManager
+            webhook_manager = WebhookManager(db)
+            await webhook_manager.notify_task_event(
+                user_id=user_id,
+                task_id=task_id,
+                event_type="task.completed",
+                additional_data={
+                    "base_clips": len(base_clips),
+                    "total_variations": matrix_result['total_variations'],
+                    "consensus_level": deliberation.consensus_level,
+                    "output_dir": matrix_result['output_dir']
+                }
+            )
+            await webhook_manager.notify_task_event(
+                user_id=user_id,
+                task_id=task_id,
+                event_type="clips.ready",
+                additional_data={
+                    "total_variations": matrix_result['total_variations'],
+                    "manifest": matrix_result['manifest_path']
+                }
+            )
+
         await progress.update(
             100,
             f"Complete! Generated {matrix_result['total_variations']} variations from {len(base_clips)} base clips",
@@ -209,5 +233,17 @@ async def generate_full_matrix_task(
                 {"status": "error", "task_id": task_id}
             )
             await db.commit()
+
+            # Send webhook notification for task failure
+            from ..webhooks.manager import WebhookManager
+            webhook_manager = WebhookManager(db)
+            await webhook_manager.notify_task_event(
+                user_id=user_id,
+                task_id=task_id,
+                event_type="task.failed",
+                additional_data={
+                    "error": str(e)
+                }
+            )
 
         raise

@@ -2,7 +2,7 @@
 Caption generator with word-level timing synchronization.
 
 Specs:
-- Font: Proxima Nova Sans
+- Font: Proxima Nova Sans (or any available font)
 - Size: 135
 - Alignment: Centered
 - Max characters per line: 11
@@ -13,6 +13,7 @@ import asyncio
 import os
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from pathlib import Path
 import json
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ class CaptionGenerator:
 
     def __init__(
         self,
-        font_path: str = "/app/fonts/ProximaNova-Regular.ttf",
+        font_path: str = "/app/fonts/TikTokSans-Regular.ttf",
         font_size: int = 135,
         max_chars_per_line: int = 11
     ):
@@ -54,14 +55,41 @@ class CaptionGenerator:
         Initialize caption generator.
 
         Args:
-            font_path: Path to Proxima Nova Sans font file
+            font_path: Path to font file (defaults to TikTokSans-Regular)
             font_size: Font size (default 135)
             max_chars_per_line: Maximum characters per line (default 11)
         """
-        self.font_path = font_path
+        # Validate font path exists, with fallback
+        font_path_obj = Path(font_path)
+        if not font_path_obj.exists():
+            # Try fallback fonts
+            fonts_dir = Path("/app/fonts")
+            fallback_fonts = ["TikTokSans-Regular.ttf", "THEBOLDFONT-FREEVERSION.ttf"]
+
+            for fallback in fallback_fonts:
+                fallback_path = fonts_dir / fallback
+                if fallback_path.exists():
+                    logger.warning(
+                        f"Font not found: {font_path}. Using fallback: {fallback_path}"
+                    )
+                    font_path = str(fallback_path)
+                    font_path_obj = fallback_path
+                    break
+
+            # If no fallback found, log error but continue (will fail later if used)
+            if not font_path_obj.exists():
+                logger.error(
+                    f"Font not found: {font_path} and no fallbacks available. "
+                    "Caption generation may fail."
+                )
+
+        self.font_path = str(font_path_obj)
         self.font_size = font_size
         self.max_chars_per_line = max_chars_per_line
-        logger.info(f"Caption generator initialized: {font_size}pt, max {max_chars_per_line} chars/line")
+        logger.info(
+            f"Caption generator initialized: {font_path_obj.name}, {font_size}pt, "
+            f"max {max_chars_per_line} chars/line"
+        )
 
     def format_captions(
         self,

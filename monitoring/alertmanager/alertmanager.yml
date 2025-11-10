@@ -1,0 +1,155 @@
+# Alertmanager Configuration for SupoClip
+
+global:
+  resolve_timeout: 5m
+  # PagerDuty integration key (replace with your actual integration key)
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert notifications
+route:
+  # Default receiver
+  receiver: 'default'
+
+  # How long to wait before sending a notification for a group of alerts
+  group_wait: 10s
+
+  # How long to wait before sending notification about new alerts added to a group
+  group_interval: 10s
+
+  # How long to wait before sending a notification again if it has already been sent
+  repeat_interval: 3h
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'cluster', 'service']
+
+  # Child routes
+  routes:
+    # Critical alerts - send to PagerDuty
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      continue: true
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Warning alerts - send to Slack/Email
+    - match:
+        severity: warning
+      receiver: 'slack-warnings'
+      continue: false
+      group_wait: 30s
+      repeat_interval: 4h
+
+    # Database alerts
+    - match:
+        component: database
+      receiver: 'database-team'
+      continue: false
+
+    # Worker alerts
+    - match:
+        component: worker
+      receiver: 'backend-team'
+      continue: false
+
+# Inhibition rules - suppress certain alerts when others are firing
+inhibit_rules:
+  # Suppress warning if critical alert is firing for same service
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service', 'instance']
+
+  # Suppress individual component alerts if backend is down
+  - source_match:
+      alertname: 'BackendDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['service']
+
+# Receivers - where to send alerts
+receivers:
+  # Default receiver (catch-all)
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+
+  # PagerDuty for critical alerts
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'  # Set this environment variable
+        routing_key: '${PAGERDUTY_ROUTING_KEY}'  # Or this one for Events API v2
+        description: '{{ .GroupLabels.alertname }} - {{ .CommonAnnotations.summary }}'
+        severity: '{{ .CommonLabels.severity }}'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+          description: '{{ .CommonAnnotations.description }}'
+          dashboard: '{{ .CommonAnnotations.dashboard }}'
+        send_resolved: true
+
+  # Slack for warnings
+  - name: 'slack-warnings'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'  # Set this environment variable
+        channel: '#supoclip-alerts'
+        title: '{{ .GroupLabels.alertname }}'
+        text: >-
+          {{ range .Alerts }}
+            *Alert:* {{ .Annotations.summary }}
+            *Description:* {{ .Annotations.description }}
+            *Severity:* {{ .Labels.severity }}
+            *Component:* {{ .Labels.component }}
+          {{ end }}
+        send_resolved: true
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: '{{ .CommonAnnotations.dashboard }}'
+          - type: button
+            text: 'Silence'
+            url: 'http://alertmanager:9093/#/silences/new'
+
+  # Database team email
+  - name: 'database-team'
+    email_configs:
+      - to: '${DATABASE_TEAM_EMAIL}'
+        from: 'alerts@supoclip.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: '${SMTP_USERNAME}'
+        auth_password: '${SMTP_PASSWORD}'
+        headers:
+          Subject: '[SupoClip] Database Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Database Alert</h2>
+          {{ range .Alerts }}
+          <p><strong>{{ .Annotations.summary }}</strong></p>
+          <p>{{ .Annotations.description }}</p>
+          <p>Severity: {{ .Labels.severity }}</p>
+          {{ end }}
+        send_resolved: true
+
+  # Backend team email
+  - name: 'backend-team'
+    email_configs:
+      - to: '${BACKEND_TEAM_EMAIL}'
+        from: 'alerts@supoclip.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: '${SMTP_USERNAME}'
+        auth_password: '${SMTP_PASSWORD}'
+        headers:
+          Subject: '[SupoClip] Backend Alert: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Backend Worker Alert</h2>
+          {{ range .Alerts }}
+          <p><strong>{{ .Annotations.summary }}</strong></p>
+          <p>{{ .Annotations.description }}</p>
+          <p>Severity: {{ .Labels.severity }}</p>
+          {{ end }}
+        send_resolved: true

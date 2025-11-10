@@ -38,6 +38,39 @@ class TitleCardGenerator:
         self.font_dir = font_dir
         logger.info(f"Title card generator initialized with font dir: {font_dir}")
 
+    def _get_valid_font_path(self, font_name: str) -> str:
+        """
+        Validate font exists and return path with fallback.
+
+        Args:
+            font_name: Font filename (e.g., "ProximaNova-Bold.ttf")
+
+        Returns:
+            Valid font path (with fallback if needed)
+        """
+        font_path = os.path.join(self.font_dir, font_name)
+
+        # Check if requested font exists
+        if os.path.exists(font_path):
+            return font_path
+
+        # Try fallback fonts
+        fallback_fonts = ["TikTokSans-Regular.ttf", "THEBOLDFONT-FREEVERSION.ttf"]
+        for fallback in fallback_fonts:
+            fallback_path = os.path.join(self.font_dir, fallback)
+            if os.path.exists(fallback_path):
+                logger.warning(
+                    f"Font not found: {font_name}. Using fallback: {fallback}"
+                )
+                return fallback_path
+
+        # No font found - log error and return requested path (will use default font)
+        logger.error(
+            f"Font not found: {font_name} and no fallbacks available. "
+            "Will use system default font."
+        )
+        return font_path
+
     async def add_title_card(
         self,
         input_path: str,
@@ -137,7 +170,7 @@ class TitleCardGenerator:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # Build FFmpeg drawtext filter based on style
-        font_path = os.path.join(self.font_dir, font_name)
+        font_path = self._get_valid_font_path(font_name)
 
         if style == "tt3":
             # TT³: White text on black rounded rectangle at top
@@ -231,8 +264,8 @@ class TitleCardGenerator:
         img = Image.new('RGB', (width, height), color='black')
         draw = ImageDraw.Draw(img)
 
-        # Load font
-        font_path = os.path.join(self.font_dir, font_name)
+        # Load font (with validation and fallback)
+        font_path = self._get_valid_font_path(font_name)
         font_size = int(height * 0.06)  # 6% of video height
         try:
             font = ImageFont.truetype(font_path, font_size)
@@ -298,8 +331,8 @@ class TitleCardGenerator:
         img = Image.new('RGBA', (width, height), color=(0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        # Load font
-        font_path = os.path.join(self.font_dir, font_name)
+        # Load font (with validation and fallback)
+        font_path = self._get_valid_font_path(font_name)
         font_size = int(height * 0.08)  # 8% of video height (larger for AdLab)
         try:
             font = ImageFont.truetype(font_path, font_size)
