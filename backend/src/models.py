@@ -140,8 +140,8 @@ class CalendarCredential(Base):
     caldav_password: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Should be encrypted in production
     calendar_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Additional metadata
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # Additional metadata (renamed from 'metadata' to avoid SQLAlchemy reserved name)
+    extra_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

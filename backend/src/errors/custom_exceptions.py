@@ -418,6 +418,12 @@ class PermissionDeniedError(UserError):
     http_status = 403
 
 
+class ValidationError(BaseSupoClipException):
+    """Input validation error."""
+    error_code = ErrorCode.VALIDATION_ERROR
+    http_status = 400
+
+
 # ============================================================================
 # Retryable vs Non-Retryable Classification
 # ============================================================================
