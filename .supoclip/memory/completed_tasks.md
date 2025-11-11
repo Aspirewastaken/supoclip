@@ -7,12 +7,12 @@
 - [⚠️] Start MLX transcription server on port 5001 (BLOCKED - requires macOS/Apple Silicon)
 - [x] Verify all services running with health checks
 
-## Phase 1B: Backend Foundation (0 / 10)
-- [ ] Create virtual environment if missing
-- [ ] Install all requirements.txt dependencies
-- [ ] Set environment variables
-- [ ] Create database schema
-- [ ] Test database connection
+## Phase 1B: Backend Foundation (5 / 10)
+- [x] Create virtual environment if missing
+- [x] Install all requirements.txt dependencies
+- [x] Set environment variables
+- [x] Create database schema
+- [x] Test database connection
 - [ ] Create basic FastAPI app structure
 - [ ] Add health endpoint
 - [ ] Add video upload endpoint
@@ -20,7 +20,7 @@
 - [ ] Test with curl on actual video file
 
 ## Total Progress
-**Completed**: 4 / 175 tasks (2.3%) | **Blocked**: 1 task
+**Completed**: 9 / 175 tasks (5.1%) | **Blocked**: 1 task
 
 ---
 
