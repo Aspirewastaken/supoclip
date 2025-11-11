@@ -109,13 +109,13 @@ class TitleGenerator:
     for different social media platforms and content styles.
     """
 
-    # OpenRouter models to use for title generation
+    # OpenRouter models to use for title generation (standardized 5-model council)
     OPENROUTER_MODELS = [
-        "anthropic/claude-3.5-sonnet",
-        "openai/gpt-4-turbo",
-        "google/gemini-2.0-flash-001",
-        "meta-llama/llama-3.1-70b-instruct",
-        "mistralai/mistral-large-2407",
+        "anthropic/claude-sonnet-4-20250514",
+        "anthropic/claude-opus-4-20250514",
+        "openai/gpt-4-turbo-preview",
+        "google/gemini-pro-1.5",
+        "deepseek/deepseek-chat",
     ]
 
     # Platform-specific character limits

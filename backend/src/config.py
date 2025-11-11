@@ -62,3 +62,8 @@ class Config:
         self.bunny_cdn_api_key = os.getenv("BUNNY_CDN_API_KEY")
         self.bunny_storage_region = os.getenv("BUNNY_STORAGE_REGION", "de")
         self.bunny_pull_zone_id = os.getenv("BUNNY_PULL_ZONE_ID")
+
+        # Error tracking and monitoring configuration
+        self.sentry_dsn = os.getenv("SENTRY_DSN")
+        self.environment = os.getenv("ENVIRONMENT", "production")
+        self.app_version = os.getenv("APP_VERSION", "1.0.0")

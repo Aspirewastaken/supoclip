@@ -1,0 +1,27 @@
+# Security-related Python dependencies for SupoClip backend
+# Install with: uv add -r SECURITY_REQUIREMENTS.txt
+
+# MIME type detection for file upload validation
+python-magic==0.4.27
+
+# Redis client for rate limiting
+redis==5.0.1
+
+# Async file operations for secure file uploads
+aiofiles==23.2.1
+
+# Security testing and scanning tools (development only)
+bandit==1.7.5  # Static security analysis
+safety==3.0.1  # Dependency vulnerability scanning
+
+# Optional: Advanced rate limiting
+slowapi==0.1.9  # Alternative rate limiting library
+
+# Optional: JWT authentication (for future upgrade)
+# pyjwt==2.8.0
+# python-jose==3.3.0
+
+# Optional: Password strength validation
+# zxcvbn==4.4.28
+
+# Note: Better Auth and FastAPI are already in main requirements

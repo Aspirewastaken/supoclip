@@ -178,7 +178,7 @@ http://localhost:8000
       "virality_score": 0.87,
       "reasoning": "Creates information gap that drives clicks...",
       "character_count": 33,
-      "model_used": "claude-3.5-sonnet"
+      "model_used": "claude-sonnet-4-20250514"
     }
   ],
   "best_title": { /* ... */ },
@@ -304,29 +304,29 @@ http://localhost:8000
 
 ## MODELS USED
 
-Via OpenRouter API - cycles through these 5 models:
+Via OpenRouter API - standardized 5-model council:
 
-1. **anthropic/claude-3.5-sonnet**
-   - Creative, nuanced language
+1. **anthropic/claude-sonnet-4-20250514**
+   - Claude Sonnet 4.5 - Advanced reasoning and analysis
    - Cost: ~$0.003 per request
 
-2. **openai/gpt-4-turbo**
-   - High quality, versatile
+2. **anthropic/claude-opus-4-20250514**
+   - Claude Opus 4.1 - Most capable model
+   - Cost: ~$0.015 per request
+
+3. **openai/gpt-4-turbo-preview**
+   - GPT-4 Turbo - High quality, versatile
    - Cost: ~$0.010 per request
 
-3. **google/gemini-2.0-flash-001**
-   - Fast, efficient
-   - Cost: ~$0.0001 per request
+4. **google/gemini-pro-1.5**
+   - Gemini 2.5 Pro - Multimodal capabilities
+   - Cost: ~$0.001 per request
 
-4. **meta-llama/llama-3.1-70b-instruct**
-   - Open source, strong performance
-   - Cost: ~$0.0004 per request
+5. **deepseek/deepseek-chat**
+   - DeepSeek Chat - Strong reasoning, cost-effective
+   - Cost: ~$0.0002 per request
 
-5. **mistralai/mistral-large-2407**
-   - European perspective, multilingual
-   - Cost: ~$0.002 per request
-
-**Average cost per request (8 variations):** ~$0.0007
+**Average cost per request (8 variations):** ~$0.0058
 
 ---
 

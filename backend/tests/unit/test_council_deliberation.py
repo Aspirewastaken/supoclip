@@ -569,3 +569,419 @@ class TestModelAnalysis:
         assert analysis.model_name == "Test Model"
         assert len(analysis.candidates) == 1
         assert analysis.recommended_total_clips == 50
+
+
+class TestEdgeCases:
+    """Additional edge case tests for council system."""
+
+    def test_calculate_target_clips_boundary_cases(self):
+        """Test exact boundary values for target clip calculation."""
+        # Just under 15 minutes
+        assert calculate_target_clips(899) == 50
+        # Exactly 15 minutes
+        assert calculate_target_clips(900) == 50
+        # Just over 15 minutes
+        assert calculate_target_clips(901) == 250
+
+        # Just under 90 minutes
+        assert calculate_target_clips(5399) == 250
+        # Exactly 90 minutes
+        assert calculate_target_clips(5400) == 250
+        # Just over 90 minutes
+        assert calculate_target_clips(5401) == 500
+
+    def test_calculate_target_clips_extreme_values(self):
+        """Test extreme duration values."""
+        # Very short video (1 second)
+        assert calculate_target_clips(1) == 50
+
+        # Very long video (10 hours)
+        assert calculate_target_clips(36000) == 500
+
+    def test_deduplicate_single_candidate(self):
+        """Test deduplication with single candidate."""
+        candidates = [
+            ClipCandidate(
+                start_time="0:10",
+                end_time="0:30",
+                duration=20,
+                title="Single clip",
+                reasoning="Test",
+                engagement_score=8,
+                category="action"
+            )
+        ]
+
+        result = deduplicate_candidates(candidates)
+
+        assert len(result) == 1
+        assert result[0].title == "Single clip"
+
+    def test_deduplicate_all_within_5_seconds(self):
+        """Test deduplication when all clips are within 5 seconds."""
+        candidates = [
+            ClipCandidate(
+                start_time="0:10",
+                end_time="0:30",
+                duration=20,
+                title="Clip 1",
+                reasoning="Test",
+                engagement_score=7,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="0:11",
+                end_time="0:31",
+                duration=20,
+                title="Clip 2",
+                reasoning="Test",
+                engagement_score=8,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="0:12",
+                end_time="0:32",
+                duration=20,
+                title="Clip 3",
+                reasoning="Test",
+                engagement_score=9,
+                category="action"
+            ),
+        ]
+
+        result = deduplicate_candidates(candidates)
+
+        # Should keep only the highest scored one
+        assert len(result) == 1
+        assert result[0].title == "Clip 3"
+        assert result[0].engagement_score == 9
+
+    def test_deduplicate_exactly_5_seconds_apart(self):
+        """Test deduplication boundary at exactly 5 seconds."""
+        candidates = [
+            ClipCandidate(
+                start_time="0:10",
+                end_time="0:30",
+                duration=20,
+                title="First",
+                reasoning="Test",
+                engagement_score=8,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="0:15",  # Exactly 5 seconds later
+                end_time="0:35",
+                duration=20,
+                title="Second",
+                reasoning="Test",
+                engagement_score=7,
+                category="action"
+            ),
+        ]
+
+        result = deduplicate_candidates(candidates)
+
+        # At exactly 5 seconds, should still deduplicate (not > 5)
+        assert len(result) == 1
+        assert result[0].title == "First"  # Higher engagement score
+
+    def test_deduplicate_just_over_5_seconds(self):
+        """Test deduplication just over 5 second threshold."""
+        candidates = [
+            ClipCandidate(
+                start_time="0:10",
+                end_time="0:30",
+                duration=20,
+                title="First",
+                reasoning="Test",
+                engagement_score=8,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="0:16",  # 6 seconds later
+                end_time="0:36",
+                duration=20,
+                title="Second",
+                reasoning="Test",
+                engagement_score=7,
+                category="action"
+            ),
+        ]
+
+        result = deduplicate_candidates(candidates)
+
+        # Just over 5 seconds - should keep both
+        assert len(result) == 2
+
+    def test_select_final_clips_fewer_candidates_than_target(self):
+        """Test selection when candidates are fewer than target."""
+        candidates = [
+            {
+                "candidate": ClipCandidate(
+                    start_time="0:10",
+                    end_time="0:30",
+                    duration=20,
+                    title="Clip 1",
+                    reasoning="Test",
+                    engagement_score=8,
+                    category="action"
+                ),
+                "yes_votes": 5,
+                "no_votes": 0,
+                "total_confidence": 4.5
+            },
+            {
+                "candidate": ClipCandidate(
+                    start_time="1:00",
+                    end_time="1:20",
+                    duration=20,
+                    title="Clip 2",
+                    reasoning="Test",
+                    engagement_score=7,
+                    category="story"
+                ),
+                "yes_votes": 4,
+                "no_votes": 1,
+                "total_confidence": 3.5
+            }
+        ]
+
+        # Request 10 clips but only have 2 candidates
+        result = select_final_clips(candidates, target_clips=10)
+
+        # Should return all available candidates
+        assert len(result) == 2
+
+    def test_select_final_clips_zero_votes(self):
+        """Test selection when all clips have zero votes."""
+        candidates = [
+            {
+                "candidate": ClipCandidate(
+                    start_time="0:10",
+                    end_time="0:30",
+                    duration=20,
+                    title="Clip 1",
+                    reasoning="Test",
+                    engagement_score=8,
+                    category="action"
+                ),
+                "yes_votes": 0,
+                "no_votes": 5,
+                "total_confidence": 0.0
+            },
+            {
+                "candidate": ClipCandidate(
+                    start_time="1:00",
+                    end_time="1:20",
+                    duration=20,
+                    title="Clip 2",
+                    reasoning="Test",
+                    engagement_score=7,
+                    category="story"
+                ),
+                "yes_votes": 0,
+                "no_votes": 5,
+                "total_confidence": 0.0
+            }
+        ]
+
+        result = select_final_clips(candidates, target_clips=1)
+
+        # Should still select 1 clip even with zero votes
+        assert len(result) == 1
+
+    def test_calculate_consensus_mixed_votes(self):
+        """Test consensus with mixed voting patterns."""
+        clip1 = ClipCandidate(
+            start_time="0:10",
+            end_time="0:30",
+            duration=20,
+            title="Unanimous",
+            reasoning="Test",
+            engagement_score=9,
+            category="action"
+        )
+        clip2 = ClipCandidate(
+            start_time="1:00",
+            end_time="1:20",
+            duration=20,
+            title="Split",
+            reasoning="Test",
+            engagement_score=7,
+            category="story"
+        )
+        clip3 = ClipCandidate(
+            start_time="2:00",
+            end_time="2:20",
+            duration=20,
+            title="Rejected",
+            reasoning="Test",
+            engagement_score=5,
+            category="emotional"
+        )
+
+        voted = [
+            {"candidate": clip1, "yes_votes": 5, "no_votes": 0, "total_confidence": 5.0},  # 100%
+            {"candidate": clip2, "yes_votes": 3, "no_votes": 2, "total_confidence": 3.0},  # 60%
+            {"candidate": clip3, "yes_votes": 1, "no_votes": 4, "total_confidence": 1.0},  # 20%
+        ]
+
+        # Select only the first two
+        final = [clip1, clip2]
+
+        consensus = calculate_consensus(voted, final)
+
+        # Average of (5/5 + 3/5) / 2 = (1.0 + 0.6) / 2 = 0.8
+        assert abs(consensus - 0.8) < 0.01
+
+    def test_timestamp_parsing_hour_format(self):
+        """Test deduplication with timestamps that include hours."""
+        candidates = [
+            ClipCandidate(
+                start_time="0:10",
+                end_time="0:30",
+                duration=20,
+                title="Early",
+                reasoning="Test",
+                engagement_score=8,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="1:10",  # 1 hour and 10 seconds
+                end_time="1:30",
+                duration=20,
+                title="Later",
+                reasoning="Test",
+                engagement_score=7,
+                category="story"
+            ),
+        ]
+
+        result = deduplicate_candidates(candidates)
+
+        # Should keep both (60 seconds apart)
+        assert len(result) == 2
+        assert result[0].title == "Early"
+        assert result[1].title == "Later"
+
+    def test_engagement_score_min_boundary(self):
+        """Test engagement score at minimum boundary (0)."""
+        clip = ClipCandidate(
+            start_time="0:10",
+            end_time="0:30",
+            duration=20,
+            title="Min score",
+            reasoning="Test",
+            engagement_score=0.0,
+            category="action"
+        )
+
+        assert clip.engagement_score == 0.0
+
+    def test_engagement_score_max_boundary(self):
+        """Test engagement score at maximum boundary (10)."""
+        clip = ClipCandidate(
+            start_time="0:10",
+            end_time="0:30",
+            duration=20,
+            title="Max score",
+            reasoning="Test",
+            engagement_score=10.0,
+            category="action"
+        )
+
+        assert clip.engagement_score == 10.0
+
+    def test_deduplicate_preserves_order(self):
+        """Test that deduplication preserves chronological order."""
+        candidates = [
+            ClipCandidate(
+                start_time="2:00",
+                end_time="2:20",
+                duration=20,
+                title="Third",
+                reasoning="Test",
+                engagement_score=7,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="0:10",
+                end_time="0:30",
+                duration=20,
+                title="First",
+                reasoning="Test",
+                engagement_score=8,
+                category="action"
+            ),
+            ClipCandidate(
+                start_time="1:00",
+                end_time="1:20",
+                duration=20,
+                title="Second",
+                reasoning="Test",
+                engagement_score=6,
+                category="action"
+            ),
+        ]
+
+        result = deduplicate_candidates(candidates)
+
+        # Should be sorted by start time
+        assert len(result) == 3
+        assert result[0].title == "First"
+        assert result[1].title == "Second"
+        assert result[2].title == "Third"
+
+    def test_select_final_clips_tie_breaking(self):
+        """Test that confidence properly breaks ties in vote counts."""
+        candidates = [
+            {
+                "candidate": ClipCandidate(
+                    start_time="0:10",
+                    end_time="0:30",
+                    duration=20,
+                    title="High confidence",
+                    reasoning="Test",
+                    engagement_score=8,
+                    category="action"
+                ),
+                "yes_votes": 3,
+                "no_votes": 2,
+                "total_confidence": 2.9
+            },
+            {
+                "candidate": ClipCandidate(
+                    start_time="1:00",
+                    end_time="1:20",
+                    duration=20,
+                    title="Low confidence",
+                    reasoning="Test",
+                    engagement_score=7,
+                    category="story"
+                ),
+                "yes_votes": 3,
+                "no_votes": 2,
+                "total_confidence": 1.5
+            },
+            {
+                "candidate": ClipCandidate(
+                    start_time="2:00",
+                    end_time="2:20",
+                    duration=20,
+                    title="Higher votes",
+                    reasoning="Test",
+                    engagement_score=9,
+                    category="emotional"
+                ),
+                "yes_votes": 4,
+                "no_votes": 1,
+                "total_confidence": 2.0
+            }
+        ]
+
+        result = select_final_clips(candidates, target_clips=3)
+
+        # Should be ordered: Higher votes (4), High confidence (3, 2.9), Low confidence (3, 1.5)
+        assert result[0].title == "Higher votes"
+        assert result[1].title == "High confidence"
+        assert result[2].title == "Low confidence"

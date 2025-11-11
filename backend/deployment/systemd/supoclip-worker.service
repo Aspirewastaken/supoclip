@@ -1,0 +1,92 @@
+# SupoClip ARQ Worker Service
+# Systemd service unit file for production deployment
+#
+# Installation:
+#   1. Copy this file to /etc/systemd/system/supoclip-worker.service
+#   2. Update paths and environment variables as needed
+#   3. Run: sudo systemctl daemon-reload
+#   4. Run: sudo systemctl enable supoclip-worker
+#   5. Run: sudo systemctl start supoclip-worker
+#
+# Management:
+#   sudo systemctl status supoclip-worker
+#   sudo systemctl restart supoclip-worker
+#   sudo systemctl stop supoclip-worker
+#   sudo journalctl -u supoclip-worker -f
+
+[Unit]
+Description=SupoClip ARQ Worker - Background video processing
+Documentation=https://github.com/your-org/supoclip
+After=network.target redis.service postgresql.service
+Requires=redis.service postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# User and group (create with: sudo useradd -r -s /bin/false supoclip)
+User=supoclip
+Group=supoclip
+
+# Working directory (adjust to your installation path)
+WorkingDirectory=/opt/supoclip/backend
+
+# Environment
+Environment="PATH=/opt/supoclip/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/opt/supoclip/backend"
+Environment="PYTHONUNBUFFERED=1"
+
+# Load additional environment variables from file
+EnvironmentFile=/opt/supoclip/backend/.env
+
+# Command to run
+ExecStart=/opt/supoclip/backend/.venv/bin/arq src.workers.tasks.WorkerSettings
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Prevent restart loop
+StartLimitInterval=5min
+StartLimitBurst=5
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=supoclip-worker
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/supoclip/backend/uploads /opt/supoclip/backend/clips /opt/supoclip/backend/logs
+
+# Resource limits (adjust based on your needs)
+# Memory limit: 4GB
+MemoryMax=4G
+MemoryHigh=3.5G
+
+# CPU quota: 200% (2 cores)
+CPUQuota=200%
+
+# File descriptor limit
+LimitNOFILE=65536
+
+# Max number of processes
+LimitNPROC=512
+
+# Nice level (lower = higher priority, range: -20 to 19)
+Nice=0
+
+# I/O scheduling class (2 = best-effort, 1 = realtime, 3 = idle)
+IOSchedulingClass=2
+IOSchedulingPriority=4
+
+[Install]
+WantedBy=multi-user.target

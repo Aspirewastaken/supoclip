@@ -201,7 +201,7 @@ http://localhost:8000
       "virality_score": 0.87,
       "reasoning": "Creates information gap that drives clicks. Uses direct address to create personal connection. Includes specific number for credibility. Optimized length for tiktok (55/150 chars). High virality potential based on engagement factors.",
       "character_count": 55,
-      "model_used": "claude-3.5-sonnet"
+      "model_used": "claude-sonnet-4-20250514"
     },
     {
       "title": "Why Do 99% of Entrepreneurs Fail at This One Thing?",
@@ -209,7 +209,7 @@ http://localhost:8000
       "virality_score": 0.84,
       "reasoning": "Creates curiosity by posing a question viewers want answered. Uses direct address to create personal connection. Includes specific number for credibility. Strong engagement potential with proven elements.",
       "character_count": 53,
-      "model_used": "gpt-4-turbo"
+      "model_used": "gpt-4-turbo-preview"
     }
     // ... more titles
   ],
@@ -219,7 +219,7 @@ http://localhost:8000
     "virality_score": 0.87,
     "reasoning": "Creates information gap that drives clicks. Uses direct address to create personal connection...",
     "character_count": 55,
-    "model_used": "claude-3.5-sonnet"
+    "model_used": "claude-sonnet-4-20250514"
   },
   "platform": "tiktok",
   "total_generated": 10

@@ -12,6 +12,15 @@ import logging
 import time
 
 from .config import Config
+from .errors import (
+    youtube_breaker,
+    VideoDownloadError,
+    YouTubeAPIError,
+    VideoNotFoundError,
+    VideoTooLargeError,
+    NetworkError,
+    add_breadcrumb,
+)
 
 logger = logging.getLogger(__name__)
 config = Config()
@@ -118,136 +127,230 @@ def validate_youtube_url(url: str) -> bool:
     video_id = get_youtube_video_id(url)
     return video_id is not None
 
-def get_youtube_video_info(url: str) -> Optional[Dict[str, Any]]:
+async def get_youtube_video_info(url: str) -> Optional[Dict[str, Any]]:
     """
     Get comprehensive video information without downloading.
     Returns title, duration, description, and other metadata.
+    Protected by circuit breaker.
     """
     video_id = get_youtube_video_id(url)
     if not video_id:
-        logger.error(f"Invalid YouTube URL: {url}")
-        return None
+        logger.error(f"Invalid YouTube URL: {url}", extra={"url": url})
+        raise VideoNotFoundError(
+            message=f"Invalid YouTube URL: {url}",
+            details={"url": url, "reason": "Could not extract video ID"}
+        )
 
-    try:
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extractaudio': False,
-            'skip_download': True,
-            'socket_timeout': 30,
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Connection': 'keep-alive',
-            },
-            # Simplified extractor args for better compatibility
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                }
-            },
-            'nocheckcertificate': True,
-        }
+    add_breadcrumb(
+        message="Fetching YouTube video info",
+        category="youtube",
+        data={"video_id": video_id, "url": url}
+    )
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-
-            return {
-                'id': info.get('id'),
-                'title': info.get('title'),
-                'description': info.get('description', ''),
-                'duration': info.get('duration'),
-                'uploader': info.get('uploader'),
-                'upload_date': info.get('upload_date'),
-                'view_count': info.get('view_count'),
-                'like_count': info.get('like_count'),
-                'thumbnail': info.get('thumbnail'),
-                'format_id': info.get('format_id'),
-                'resolution': info.get('resolution'),
-                'fps': info.get('fps'),
-                'filesize': info.get('filesize'),
+    async def _fetch_info():
+        try:
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extractaudio': False,
+                'skip_download': True,
+                'socket_timeout': 30,
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Connection': 'keep-alive',
+                },
+                # Simplified extractor args for better compatibility
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                    }
+                },
+                'nocheckcertificate': True,
             }
 
-    except Exception as e:
-        logger.error(f"Error extracting video info: {e}")
-        return None
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
 
-def get_youtube_video_title(url: str) -> Optional[str]:
+                if not info:
+                    raise VideoNotFoundError(
+                        message=f"Video information not found for: {url}",
+                        details={"video_id": video_id, "url": url}
+                    )
+
+                return {
+                    'id': info.get('id'),
+                    'title': info.get('title'),
+                    'description': info.get('description', ''),
+                    'duration': info.get('duration'),
+                    'uploader': info.get('uploader'),
+                    'upload_date': info.get('upload_date'),
+                    'view_count': info.get('view_count'),
+                    'like_count': info.get('like_count'),
+                    'thumbnail': info.get('thumbnail'),
+                    'format_id': info.get('format_id'),
+                    'resolution': info.get('resolution'),
+                    'fps': info.get('fps'),
+                    'filesize': info.get('filesize'),
+                }
+
+        except yt_dlp.utils.DownloadError as e:
+            logger.error(f"YouTube API error extracting video info: {e}", extra={"video_id": video_id})
+            raise YouTubeAPIError(
+                message=f"Failed to fetch video information from YouTube",
+                details={"video_id": video_id, "url": url, "error": str(e)},
+                cause=e
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error extracting video info: {e}", extra={"video_id": video_id}, exc_info=True)
+            raise YouTubeAPIError(
+                message=f"Unexpected error fetching video information",
+                details={"video_id": video_id, "url": url, "error": str(e)},
+                cause=e
+            )
+
+    # Use circuit breaker for external YouTube API calls
+    try:
+        return await youtube_breaker.call(_fetch_info)
+    except Exception as e:
+        logger.error(f"Circuit breaker error for video info: {e}", extra={"video_id": video_id})
+        raise
+
+async def get_youtube_video_title(url: str) -> Optional[str]:
     """
     Get the title of a YouTube video from a URL.
     Enhanced with better error handling and validation.
     """
-    video_info = get_youtube_video_info(url)
-    return video_info.get('title') if video_info else None
+    try:
+        video_info = await get_youtube_video_info(url)
+        return video_info.get('title') if video_info else None
+    except Exception as e:
+        logger.error(f"Error getting YouTube video title: {e}", extra={"url": url})
+        return None
 
-def download_youtube_video(url: str, max_retries: int = 3) -> Optional[Path]:
+async def download_youtube_video(url: str, max_retries: int = 3) -> Optional[Path]:
     """
     Download YouTube video with optimized settings and retry logic.
-    Returns the path to the downloaded file, or None if download fails.
+    Returns the path to the downloaded file.
+    Protected by circuit breaker and enhanced error handling.
+
+    Raises:
+        VideoNotFoundError: If video ID cannot be extracted or video not found
+        VideoDownloadError: If download fails after all retries
+        YouTubeAPIError: If YouTube API fails
     """
     logger.info(f"Starting YouTube download: {url}")
 
     video_id = get_youtube_video_id(url)
     if not video_id:
-        logger.error(f"Could not extract video ID from URL: {url}")
-        return None
+        logger.error(f"Could not extract video ID from URL: {url}", extra={"url": url})
+        raise VideoNotFoundError(
+            message=f"Could not extract video ID from URL",
+            details={"url": url}
+        )
+
+    add_breadcrumb(
+        message="Starting YouTube video download",
+        category="youtube",
+        data={"video_id": video_id, "url": url}
+    )
 
     downloader = YouTubeDownloader()
 
     # Get video info first to validate and get metadata
-    video_info = get_youtube_video_info(url)
-    if not video_info:
-        logger.error(f"Could not retrieve video information for: {url}")
-        return None
+    try:
+        video_info = await get_youtube_video_info(url)
+    except Exception as e:
+        logger.error(f"Failed to retrieve video information: {e}", extra={"video_id": video_id})
+        raise
 
-    logger.info(f"Video: '{video_info.get('title')}' ({video_info.get('duration')}s)")
+    logger.info(
+        f"Video: '{video_info.get('title')}' ({video_info.get('duration')}s)",
+        extra={"video_id": video_id, "title": video_info.get('title'), "duration": video_info.get('duration')}
+    )
 
-    # Check if video is too long (optional safeguard)
+    # Check if video is too long
     duration = video_info.get('duration', 0)
     if duration > 3600:  # 1 hour limit
-        logger.warning(f"Video duration ({duration}s) exceeds recommended limit")
+        logger.warning(
+            f"Video duration ({duration}s) exceeds recommended limit",
+            extra={"video_id": video_id, "duration": duration}
+        )
+        raise VideoTooLargeError(
+            message=f"Video duration ({duration}s) exceeds 1 hour limit",
+            details={"video_id": video_id, "duration": duration, "limit": 3600}
+        )
 
-    # Retry download with exponential backoff
-    for attempt in range(max_retries):
-        try:
-            logger.info(f"Download attempt {attempt + 1}/{max_retries}")
+    # Wrap download in circuit breaker
+    async def _download():
+        # Retry download with exponential backoff
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                logger.info(
+                    f"Download attempt {attempt + 1}/{max_retries}",
+                    extra={"video_id": video_id, "attempt": attempt + 1}
+                )
 
-            ydl_opts = downloader.get_optimal_download_options(video_id)
+                ydl_opts = downloader.get_optimal_download_options(video_id)
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Download the video
-                ydl.download([url])
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    # Download the video
+                    ydl.download([url])
 
-                # Find the downloaded file
-                logger.info(f"Searching for downloaded file: {video_id}.*")
-                for file_path in downloader.temp_dir.glob(f"{video_id}.*"):
-                    if file_path.is_file() and file_path.suffix.lower() in ['.mp4', '.mkv', '.webm']:
-                        file_size = file_path.stat().st_size
-                        logger.info(f"Download successful: {file_path.name} ({file_size // 1024 // 1024}MB)")
-                        return file_path
+                    # Find the downloaded file
+                    logger.info(f"Searching for downloaded file: {video_id}.*")
+                    for file_path in downloader.temp_dir.glob(f"{video_id}.*"):
+                        if file_path.is_file() and file_path.suffix.lower() in ['.mp4', '.mkv', '.webm']:
+                            file_size = file_path.stat().st_size
+                            logger.info(
+                                f"Download successful: {file_path.name} ({file_size // 1024 // 1024}MB)",
+                                extra={"video_id": video_id, "file_size_mb": file_size // 1024 // 1024}
+                            )
+                            return file_path
 
-                logger.warning(f"No video file found after download attempt {attempt + 1}")
+                    logger.warning(
+                        f"No video file found after download attempt {attempt + 1}",
+                        extra={"video_id": video_id, "attempt": attempt + 1}
+                    )
 
-        except yt_dlp.utils.DownloadError as e:
-            logger.warning(f"Download attempt {attempt + 1} failed: {e}")
-            if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff: 1, 2, 4 seconds
-                logger.info(f"Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
-            else:
-                logger.error(f"All download attempts failed for: {url}")
+            except yt_dlp.utils.DownloadError as e:
+                last_error = e
+                logger.warning(
+                    f"Download attempt {attempt + 1} failed: {e}",
+                    extra={"video_id": video_id, "attempt": attempt + 1, "error": str(e)}
+                )
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1, 2, 4 seconds
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
 
-        except Exception as e:
-            logger.error(f"Unexpected error during download attempt {attempt + 1}: {e}")
-            if attempt < max_retries - 1:
-                wait_time = 2 ** attempt
-                logger.info(f"Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
-            else:
-                logger.error(f"All download attempts failed for: {url}")
+            except Exception as e:
+                last_error = e
+                logger.error(
+                    f"Unexpected error during download attempt {attempt + 1}: {e}",
+                    extra={"video_id": video_id, "attempt": attempt + 1},
+                    exc_info=True
+                )
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
 
-    return None
+        # All retries failed
+        logger.error(f"All download attempts failed for: {url}", extra={"video_id": video_id})
+        raise VideoDownloadError(
+            message=f"Failed to download video after {max_retries} attempts",
+            details={"video_id": video_id, "url": url, "attempts": max_retries, "last_error": str(last_error)},
+            cause=last_error
+        )
+
+    try:
+        return await youtube_breaker.call(_download)
+    except Exception as e:
+        logger.error(f"Circuit breaker error during download: {e}", extra={"video_id": video_id})
+        raise
 
 def get_video_duration(url: str) -> Optional[int]:
     """Get video duration in seconds without downloading."""

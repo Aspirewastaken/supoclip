@@ -246,7 +246,7 @@ Content-Type: application/json
       "virality_score": 0.87,
       "reasoning": "Creates information gap that drives clicks. Uses direct address to create personal connection. Includes specific number for credibility. Optimized length for tiktok (47/150 chars). High virality potential based on engagement factors.",
       "character_count": 47,
-      "model_used": "claude-3.5-sonnet"
+      "model_used": "claude-sonnet-4-20250514"
     }
   ],
   "best_title": { /* highest scoring title */ },

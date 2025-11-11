@@ -10,10 +10,18 @@ import json
 import asyncio
 from typing import Dict, Any
 
-# Configure logging
+# Import error handling infrastructure
+from .errors import (
+    register_error_handlers,
+    setup_error_middleware,
+    initialize_error_tracking,
+    get_all_circuit_breaker_stats,
+)
+
+# Configure logging with structured format
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] - %(message)s',
     handlers=[
         logging.StreamHandler(),
         logging.FileHandler('logs/backend.log')
@@ -50,10 +58,23 @@ config = Config()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        # Initialize error tracking (Sentry if configured)
+        logger.info("Initializing error tracking...")
+        initialize_error_tracking()
+
+        # Initialize database
+        logger.info("Initializing database connection...")
         await init_db()
+
+        logger.info("Application startup complete")
         yield
+    except Exception as e:
+        logger.error(f"Error during application startup: {e}", exc_info=True)
+        raise
     finally:
+        logger.info("Shutting down application...")
         await close_db()
+        logger.info("Application shutdown complete")
 
 app = FastAPI(
     title="SupoClip API",
@@ -121,6 +142,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register error handling infrastructure
+logger.info("Registering error handlers and middleware...")
+register_error_handlers(app)
+setup_error_middleware(app)
+logger.info("Error handling infrastructure registered successfully")
+
 # Include API routers
 app.include_router(tasks_router)
 app.include_router(posting_router)
@@ -160,7 +187,8 @@ app.mount("/thumbnails", StaticFiles(directory=str(thumbnails_dir)), name="thumb
                         "message": "This is the SupoClip FastAPI-based API. Visit /docs for the API documentation.",
                         "version": "1.0.0",
                         "docs": "/docs",
-                        "health": "/health/db"
+                        "health": "/health/db",
+                        "circuit_breakers": "/health/circuit-breakers"
                     }
                 }
             }
@@ -172,8 +200,50 @@ def read_root():
         "message": "This is the SupoClip FastAPI-based API. Visit /docs for the API documentation.",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/health/db"
+        "health": "/health/db",
+        "circuit_breakers": "/health/circuit-breakers"
     }
+
+@app.get(
+    "/health/circuit-breakers",
+    summary="Circuit Breaker Status",
+    description="Get status and statistics for all circuit breakers",
+    tags=["Core"],
+    responses={
+        200: {
+            "description": "Circuit breaker status and statistics",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "assemblyai": {
+                            "state": "closed",
+                            "stats": {
+                                "total_calls": 150,
+                                "successful_calls": 148,
+                                "failed_calls": 2,
+                                "success_rate": 0.9867,
+                                "failure_rate": 0.0133
+                            }
+                        },
+                        "llm": {
+                            "state": "closed",
+                            "stats": {
+                                "total_calls": 200,
+                                "successful_calls": 195,
+                                "failed_calls": 5,
+                                "success_rate": 0.975,
+                                "failure_rate": 0.025
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+def get_circuit_breaker_status():
+    """Get circuit breaker status and statistics"""
+    return get_all_circuit_breaker_stats()
 
 @app.get(
     "/health/db",

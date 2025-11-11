@@ -63,15 +63,15 @@ Default: http://localhost:3000
 
 ## Models Used
 
-The system automatically uses these models via OpenRouter:
+The system automatically uses these standardized 5-model council via OpenRouter:
 
-1. **anthropic/claude-3.5-sonnet** - $3/1M input tokens
-2. **openai/gpt-4-turbo** - $10/1M input tokens
-3. **google/gemini-2.0-flash-001** - $0.075/1M input tokens
-4. **meta-llama/llama-3.1-70b-instruct** - $0.35/1M input tokens
-5. **mistralai/mistral-large-2407** - $2/1M input tokens
+1. **anthropic/claude-sonnet-4-20250514** (Claude Sonnet 4.5) - $3/1M input tokens
+2. **anthropic/claude-opus-4-20250514** (Claude Opus 4.1) - $15/1M input tokens
+3. **openai/gpt-4-turbo-preview** (GPT-4 Turbo) - $10/1M input tokens
+4. **google/gemini-pro-1.5** (Gemini 2.5 Pro) - $1.25/1M input tokens
+5. **deepseek/deepseek-chat** (DeepSeek Chat) - $0.14/1M input tokens
 
-Average cost per title generation: **~$0.0007**
+Average cost per title generation: **~$0.0058**
 
 ## Testing
 
@@ -258,16 +258,19 @@ For issues with the title generation system:
 
 ### Custom Model Selection
 
-To use different models, edit `/home/user/supoclip/backend/src/ai/title_generator.py`:
+The system uses a standardized 5-model council. To view the configuration, see `/home/user/supoclip/backend/src/ai/title_generator.py`:
 
 ```python
 OPENROUTER_MODELS = [
-    "anthropic/claude-3.5-sonnet",
-    "openai/gpt-4-turbo",
-    "google/gemini-2.0-flash-001",
-    # Add your preferred models here
+    "anthropic/claude-sonnet-4-20250514",
+    "anthropic/claude-opus-4-20250514",
+    "openai/gpt-4-turbo-preview",
+    "google/gemini-pro-1.5",
+    "deepseek/deepseek-chat",
 ]
 ```
+
+**Note**: These models match the council deliberation system for consistency across the application.
 
 ### Temperature Tuning
 
